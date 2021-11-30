@@ -140,6 +140,8 @@ np.savez('plot_scripts/eigencomponent_extradata.npz', mode0_phasedeviation=mode0
 x = np.linspace(-np.pi, np.pi, num=2048)
 qbar = np.cos(5*x)
 
+eigsolver = EigenvalueSolverFD(qbar)
+
 kys = np.array([3, 4], dtype=np.int32)
 freqmult = np.array([3, 4], dtype=np.int32)
 

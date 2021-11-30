@@ -72,6 +72,11 @@ class PoincareMapper:
         
         self.uyminx = scipy.optimize.minimize_scalar(uyf, bounds=(-3.0, 0.0), method='bounded')
         self.qmin = qbarf(self.uyminx.x) + 8*(self.uyminx.x)
+        
+        # Compute array of qmins. Bounds here are hard-coded by eye
+        boundsarr = [(-3.0, -2.0), (-2.0, 0.0), (0.0,2.5)]
+        self.uyminxs = [scipy.optimize.minimize_scalar(uyf, bounds=b, method='bounded') for b in boundsarr]
+        self.qmins = [qbarf(uymin.x) + 8*(uymin.x) for uymin in self.uyminxs]
 
     # Poincare section method
     def poincareSection(self, ampmult, phaseoffs, z0, sections, zonalmult=1.0, sectionsamps=1, u0=0.0):
@@ -335,40 +340,6 @@ class PoincareMapper:
         
         return lam.slope, lam.stderr
 
-# %% Phase lyapunov exponents
-
-"""
-amprange = np.arange(1.0, 1.16, 0.05)
-phrange = np.linspace(-np.pi, np.pi, endpoint=False, num=24)
-
-ampall, phall = np.meshgrid(amprange, phrange)
-numall = len(ampall.ravel())
-
-lyaps = np.zeros(numall)
-lyapstds = np.zeros(numall)
-
-for ind in range(numall):
-    m = ampall.ravel()[ind]
-    ph = phall.ravel()[ind]
-    print(m, ph)
-    
-    ampmult = np.ones(numeigs)*m
-    phaseoffs = np.zeros(numeigs)
-    phaseoffs[0] = ph
-    
-    sol, yclip = generateBreakingSection(ampmult, phaseoffs, qmin)
-    lyap, lyapstd = findLyapunov(sol, yclip)
-    
-    lyaps[ind] = lyap
-    lyapstds[ind] = lyapstd
-    
-    print('-----')
-
-lyaps = np.reshape(lyaps, ampall.shape)
-lyapstds = np.reshape(lyapstds, ampall.shape)
-
-np.savez('lyaps_allphases_test.npz', amprange=amprange, phrange=phrange, lyaps=lyaps, lyapstds=lyapstds)
-"""
 
 
 # %% Zonal lyapunov exponents
@@ -400,66 +371,6 @@ plt.semilogy(zonalrange, lyaps)
 """
 
 
-# %% Plot contours
-
-"""
-plt.figure()
-
-def plotContour(z, c='C0'):
-    stride = 1
-    nparticles = len(z)//2
-    
-    chop = np.abs(np.diff(z[nparticles::stride])) > 1.5*np.pi
-    chopargs = np.argwhere(chop)[:,0]+1
-    
-    if len(chopargs)==0:
-        plt.plot(z[nparticles:], z[:nparticles], c=c)
-    else:
-        plt.plot(z[nparticles:nparticles+chopargs[0]:stride], z[:chopargs[0]:stride], c=c)
-        plt.plot(z[nparticles+chopargs[-1]::stride], z[chopargs[-1]:nparticles:stride], c=c)
-        
-        for i in range(len(chopargs)-1):
-            plt.plot(z[nparticles+chopargs[i]:nparticles+chopargs[i+1]:stride], z[chopargs[i]:chopargs[i+1]:stride], c=c)
-
-plotContour(yclip[0], c='C0')
-plotContour(yclip[-1], c='C1')
-
-plt.figure()
-
-nparticles = sol0.y.shape[0]//2
-arclengths_old = np.sum(np.sqrt(np.diff(sol0.y[:nparticles,:], axis=0)**2 + np.diff(sol0.y[nparticles:,:], axis=0)**2), axis=0)
-
-arclengths_new = np.zeros(len(sol.y))
-for i in range(len(sol.y)):
-    z = sol.y[i]
-    nparticles = z.shape[0]//2
-    arclength_lastbit = np.sqrt((np.mod(z[nparticles-1]-z[0]+np.pi,2*np.pi)-np.pi)**2 + (np.mod(z[-1]-z[nparticles]+np.pi,2*np.pi)-np.pi)**2)
-    arclengths_new[i] = np.sum(np.sqrt(np.diff(z[:nparticles])**2 + np.diff(z[nparticles:])**2))+arclength_lastbit
-    
-plt.semilogy(arclengths_old)
-plt.semilogy(arclengths_new)
-"""
-
-
-# %% Poincare sections via amplitude of waves
-
-"""
-amprange = ['11', '12', '16']
-
-for i in range(len(amprange)):
-    m = float(amprange[i])/10.0
-    print(m)
-    generateFullSection(np.ones(numeigs)*m, np.zeros(numeigs), amprange[i]+'_full.npz')
-"""
-
-"""
-ampmult = np.ones(numeigs)
-ampmult[0] = amps[7]/amps[0]
-ampmult[7] = amps[0]/amps[7]
-
-generateFullSection(ampmult, np.zeros(numeigs), 'switched_full.npz')
-"""
-
 # %% Poincare sections via amplitude of zonal flows
 
 """
@@ -473,39 +384,6 @@ for i in range(len(amprange)):
     generateFullSection(ampmults, np.zeros(numeigs), 'z'+amprange[i]+'_test.npz', zonalmult=m, sections=512)
 """
 
-# %% Generate time-dependent lyapunov exponents
-
-"""
-timedata = np.load('./eigencomponent_longtimedata.npz')
-
-ampdevs = timedata['ampdevs']
-phasedevs = timedata['phasedevs']
-
-t = np.linspace(2400, 3600, num=13, endpoint=True)
-lyaps = np.zeros(t.shape)
-lyapstds = np.zeros(t.shape)
-
-for ind in range(len(t)):
-    print(t[ind])
-    
-    sol, yclip = generateBreakingSection(ampdevs[:,ind], phasedevs[:,ind], qmin, sections=20, resampling=True)
-    lyap, lyapstd = findLyapunov(sol, yclip, resampling=True)
-    
-    lyaps[ind] = lyap
-    lyapstds[ind] = lyapstd
-    
-    print('-----')
-    
-np.savez('lyaps_longtimedependent_allmodes.npz', lyaps=lyaps, lyapstds=lyapstds)
-"""
-
-# %%
-
-#plt.figure()
-#plt.semilogy(t, lyaps)
-#plt.plot(t, ampdevs[0,:])
-#plt.plot(t, ampdevs[1,:])
-#plt.plot(t, ampdevs[2,:])
 
 # %%
 
