@@ -29,6 +29,11 @@ qbar = ampfile['qbar']
 
 lyapdata = np.load('../lyapunovs/lyaps_multicontour_longtimedependent_allmodes.npz')
 
+def integrate(q):
+    kinv = np.fft.rfftfreq(len(q), 1.0/len(q))
+    kinv[kinv > 0] = 1.0 / kinv[kinv > 0]
+    return np.fft.irfft(np.fft.rfft(q)*1j*kinv)
+
 # %% 
 
 tab20b = mpl.cm.get_cmap('tab20b')
@@ -44,9 +49,14 @@ ax = [fig.add_subplot(gs[0,0]), fig.add_subplot(gs[0,1]), fig.add_subplot(gs[1,:
 t = np.linspace(0, 64, num=257, endpoint=True)
 x = np.linspace(-np.pi, np.pi, num=2048, endpoint=False)
 
-for j in range(13):
-    ax[0].plot(x, qbars[j,:], c=tab20c(3.5/20.0))
-    
+cutoff = 8
+
+for j in reversed(range(13)):
+    if j < cutoff:
+        ax[0].plot(x, qbars[j,:], c=tab20c(3.5/20.0))
+    else:
+        ax[0].plot(x, qbars[j,:], c=tab20c(11.5/20.0))
+        
 ax[0].plot(x, qbar, c=tab20c(0.5/20.0))
 
 # Here we have the 9 most energetic eigenmodes
@@ -86,8 +96,9 @@ for j in range(len(eignums)):
         phase0all = expphases
         setphase0 = True
     
-    
-    ax[1].scatter(np.ones(len(ampj))*(j+1), np.abs(ampj)/1024, color=tab20c(3.5/20.0), marker='_')
+    #ax[1].scatter(np.ones(len(ampj[:1]))*(j+1), np.abs(ampj[:1])/1024, color=tab20b(2.5/20.0), marker='_')
+    ax[1].scatter(np.ones(len(ampj[cutoff:]))*(j+1), np.abs(ampj[cutoff:])/1024, color=tab20c(11.5/20.0), marker='_')
+    ax[1].scatter(np.ones(len(ampj[:cutoff]))*(j+1), np.abs(ampj[:cutoff])/1024, color=tab20c(3.5/20.0), marker='_')
     ax[1].errorbar([j+1], [ampavg], yerr=np.array([[ampavg-amplow, amphig-ampavg]]).T, color=tab20c(0.5/20.0), marker='_')
     #ax[1].scatter([j], [ampavg], color=tab20c(4.5/20.0), marker='_')
     
@@ -115,11 +126,17 @@ ax[1].set_xticks([1,3,5,7,9])
 ax[1].set_xlabel('Eigenmode number (energy rank)')
 
 longt = np.arange(2400.0, 3600.1, 100.0)
-ax[2].plot(longt, lyapdata['lyaps'], marker='.')
-ax[2].set_title('Lyapunov exponent time evolution')
+ax[2].plot(longt[:cutoff+1], np.max(lyapdata['lyaps'][:,:cutoff+1], axis=0), marker='.', c=tab20c(0.5/20.0), label='top')
+ax[2].plot(longt[cutoff:], lyapdata['lyaps'][2,cutoff:], marker='.', c=tab20c(8.5/20.0), label='top')
+#ax[2].plot(longt[:], lyapdata['lyaps'][2,:], marker='.', c=tab20c(8.5/20.0), label='top')
+#ax[2].plot(longt[:], lyapdata['lyaps'][1,:], marker='.', c=tab20c(0.5/20.0), label='middle')
+#ax[2].plot(longt[:], lyapdata['lyaps'][0,:], marker='.', c=tab20c(12.5/20.0), label='bottom')
+#ax[2].legend(loc='upper center', ncol=1, frameon=False, borderpad=0.0)
+ax[2].set_title('Time evolution of Lyapunov exponent')
 ax[2].text(-0.05, 1.02, r'$\bar{\lambda}$', transform=ax[2].transAxes) 
 ax[2].set_xlabel('time')
 ax[2].axhline(ls='--', c='k')
+#ax[2].set_xlim([2400.0,4000.0])
 
 plt.suptitle(r'Data from snapshots over long time $\Delta t = 1200$')
 

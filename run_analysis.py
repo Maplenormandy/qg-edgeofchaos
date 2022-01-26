@@ -31,13 +31,13 @@ numeigs = len(pm.data['kys'])
 
 # %% Generate amplitude lyapunov exponents
 
-"""
+
 for i in range(len(pm.qmins)):
     print('contour locations')
     print(pm.uyminxs[i].x)
 
 amprange = np.arange(0.0, 1.61, 0.05)
-numwaves = [2, 3, 6, 9]
+numwaves = [1]
 nfev = np.zeros(amprange.shape, dtype=np.int32)
 
 for waves in numwaves:
@@ -70,7 +70,7 @@ for waves in numwaves:
         print('-----')
         
     np.savez('lyapunovs/lyaps_multicontour_{}modes.npz'.format(waves), amprange=amprange, lyaps=lyaps, lyapstds=lyapstds, nfev=nfev)
-"""
+
 
 # %% Phase lyapunov exponents
 
@@ -117,14 +117,15 @@ np.savez('lyapunovs/lyaps_multicontour_allphases.npz', amprange=amprange, phrang
 
 # %% Long time lyapunov exponents
 
+"""
 timedata = np.load('./poincare_input/eigencomponent_longtimedata.npz')
 
 ampdevs = timedata['ampdevs']
 phasedevs = timedata['phasedevs']
 
 t = np.linspace(2400, 3600, num=13, endpoint=True)
-lyaps = np.zeros(t.shape)
-lyapstds = np.zeros(t.shape)
+lyaps = np.zeros(shape=(3,len(t)))
+lyapstds = np.zeros(shape=(3,len(t)))
 
 for ind in range(len(t)):
     print(t[ind])
@@ -133,9 +134,8 @@ for ind in range(len(t)):
         sol, yclip = pm.generateBreakingSection(ampdevs[:,ind], phasedevs[:,ind], pm.qmins[i], resampling=True)
         lyap, lyapstd = pm.findLyapunov(sol, yclip, resampling=True)
         
-        if lyap >= lyaps[ind]:
-            lyaps[ind] = lyap
-            lyapstds[ind] = lyapstd
+        lyaps[i,ind] = lyap
+        lyapstds[i,ind] = lyapstd
     
     #sol, yclip = pm.generateBreakingSection(ampdevs[:,ind], phasedevs[:,ind], pm.qmin, sections=20, resampling=True)
     #lyap, lyapstd = pm.findLyapunov(sol, yclip, resampling=True)
@@ -146,7 +146,7 @@ for ind in range(len(t)):
     print('-----')
     
 np.savez('lyapunovs/lyaps_multicontour_longtimedependent_allmodes.npz', lyaps=lyaps, lyapstds=lyapstds)
-
+"""
 
 # %% Poincare sections via amplitude of waves
 
