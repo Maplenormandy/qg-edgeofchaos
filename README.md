@@ -13,3 +13,4 @@ Analysis scripts for QG equations
 - `lyapunovs` - Output lyapunov exponents go here
 - `plot_scripts` - Scripts for plotting the outputted data
 - `qg_dns` - Folder containing DNS (and DNS analysis) scripts which run on the cluster
+- `scratch` - Scratch scripts to test things with
