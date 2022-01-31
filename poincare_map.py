@@ -10,6 +10,7 @@ import scipy.integrate
 import scipy.interpolate
 import scipy.optimize
 import scipy.stats
+import scipy.signal
 from skimage import measure
 from collections import namedtuple
 
@@ -70,13 +71,12 @@ class PoincareMapper:
         self.funcs = (psif, utyf, qtf, uyf)
         self.x = x
         
-        self.uyminx = scipy.optimize.minimize_scalar(uyf, bounds=(-3.0, 0.0), method='bounded')
+        self.uyminx = scipy.optimize.minimize_scalar(uyf, bounds=(-np.pi, np.pi), method='bounded')
         self.qmin = qbarf(self.uyminx.x) + 8*(self.uyminx.x)
         
-        # Compute array of qmins. Bounds here are hard-coded by eye
-        boundsarr = [(-3.0, -2.0), (-2.0, 0.0), (0.0,2.5)]
-        self.uyminxs = [scipy.optimize.minimize_scalar(uyf, bounds=b, method='bounded') for b in boundsarr]
-        self.qmins = [qbarf(uymin.x) + 8*(uymin.x) for uymin in self.uyminxs]
+        # Compute array of qmins.
+        self.uyminxs = x[scipy.signal.argrelextrema(uy, np.less)]
+        self.qmins = [qbarf(uymin) + 8*(uymin) for uymin in self.uyminxs]
 
     # Poincare section method
     def poincareSection(self, ampmult, phaseoffs, z0, sections, zonalmult=1.0, sectionsamps=1, u0=0.0):

@@ -51,6 +51,8 @@ uyf = circularInterpolant(uy)
 
 # %% Wave breaking section
 
+case = 1
+
 tab20b = mpl.cm.get_cmap('tab20b')
 tab20c = mpl.cm.get_cmap('tab20c')
 
@@ -65,7 +67,7 @@ gsl = gs[0].subgridspec(len(amps), 1, hspace=0)
 ax2 = fig.add_subplot(gs[1])
 
 for ampind in range(len(amps)):
-    data = np.load('../sections/breaking_amp{}.npz'.format(amps[ampind]))
+    data = np.load('../sections/case{}_breaking_amp{}.npz'.format(case, amps[ampind]))
     yclip = data['yclip']
     y = data['y']
     t = data['t']
@@ -75,7 +77,9 @@ for ampind in range(len(amps)):
     stride = 1
     ax.plot(yclip[nparticles::stride,0], yclip[:nparticles:stride,0], c=tab20c(11.5/20.0), lw=1.0)
     
-    plotind = 8
+    ycenter = (np.max(yclip[:nparticles:stride,0]) - np.min(yclip[:nparticles:stride,0]))
+    
+    plotind = 1
     
     
     chop = np.abs(np.diff(yclip[nparticles::stride,plotind])) > 1.5*np.pi
@@ -90,7 +94,8 @@ for ampind in range(len(amps)):
         ax.plot(yclip[nparticles+chopargs[i]:nparticles+chopargs[i+1]:stride,plotind], yclip[chopargs[i]:chopargs[i+1]:stride,plotind], c=c2, lw=1.0)
         
     ax.set_xlim(-np.pi, np.pi)
-    ax.set_ylim(-1.15, -0.45)
+    #ax.set_ylim(-1.15, -0.45)
+    #ax.set_ylim(ycenter-0.35, ycenter+0.35)
     ax.text(2.0, -0.7, '{0:.2f}'.format(float(amps[ampind])/100.0))
     
     ax.xaxis.set_minor_locator(plt.NullLocator())
@@ -119,12 +124,12 @@ ax2.legend(loc='upper left')
 plt.tight_layout(h_pad=0.6)
 plt.tight_layout(h_pad=0.6)
 
-plt.savefig('wave_breaking.pdf', dpi=200)
-plt.savefig('wave_breaking.png', dpi=300)
+#plt.savefig('wave_breaking.pdf', dpi=200)
+#plt.savefig('wave_breaking.png', dpi=300)
 
 # %% Plot of contour superimposed on turbulence. First, load data
 
-with h5py.File('../dns_input/snapshots_s1.h5', mode='r') as simdata:
+with h5py.File('../dns_input/case{}/snapshots_s{}.h5'.format(case, 3-case), mode='r') as simdata:
     q = simdata['tasks/q'][0,:,:]
     x = simdata['scales/x']['1.0'][:]
     y = simdata['scales/y']['1.0'][:]
@@ -152,7 +157,7 @@ ax.pcolormesh(yg.T, xg.T, np.flipud(qplot.T), cmap=mymap2, shading='gouraud', vm
 plt.axis('square')
 
 for ampind in [1]:
-    data = np.load('../sections/breaking_amp{}.npz'.format(amps[ampind]))
+    data = np.load('../sections/case{}_breaking_amp{}.npz'.format(case, amps[ampind]))
     yclip = data['yclip']
     y = data['y']
     t = data['t']
@@ -179,5 +184,5 @@ for ampind in [1]:
 plt.tight_layout(h_pad=0.6)
 plt.tight_layout(h_pad=0.6)
 
-plt.savefig('wave_overlay.pdf', dpi=300)
-plt.savefig('wave_overlay.png', dpi=300)
+#plt.savefig('wave_overlay.pdf', dpi=300)
+#plt.savefig('wave_overlay.png', dpi=300)

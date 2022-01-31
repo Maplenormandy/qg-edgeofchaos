@@ -19,25 +19,28 @@ from poincare_map import PoincareMapper
 
 # %% Set up Poincare Mapper
 
-pm = PoincareMapper('poincare_input/poincare_config_fd_smooth.npz')
+case = 1
+pm = PoincareMapper('poincare_input/case{}_poincare_config_fd_smooth.npz'.format(case))
 numeigs = len(pm.data['kys'])
 
 
 # %% Generate some sections of breaking waves
 
-#pm.generateBreakingSection(np.ones(numeigs)*0.4, np.zeros(numeigs), pm.qmin, 16, 'sections/breaking_amp040.npz')
-#pm.generateBreakingSection(np.ones(numeigs)*1.0, np.zeros(numeigs), pm.qmin, 16, 'sections/breaking_amp100.npz')
-#pm.generateBreakingSection(np.ones(numeigs)*1.2, np.zeros(numeigs), pm.qmin, 16, 'sections/breaking_amp120.npz')
+"""
+pm.generateBreakingSection(np.ones(numeigs)*0.4, np.zeros(numeigs), pm.qmin, 16, 'sections/case{}_breaking_amp040.npz'.format(case))
+pm.generateBreakingSection(np.ones(numeigs)*1.0, np.zeros(numeigs), pm.qmin, 16, 'sections/case{}_breaking_amp100.npz'.format(case))
+pm.generateBreakingSection(np.ones(numeigs)*1.2, np.zeros(numeigs), pm.qmin, 16, 'sections/case{}_breaking_amp120.npz'.format(case))
+"""
 
 # %% Generate amplitude lyapunov exponents
 
-
+"""
 for i in range(len(pm.qmins)):
     print('contour locations')
-    print(pm.uyminxs[i].x)
+    print(pm.uyminxs[i])
 
-amprange = np.arange(0.0, 1.61, 0.05)
-numwaves = [1]
+amprange = np.arange(0.0, 1.61, 0.1)
+numwaves = [1, 2, 3, 6, 9]
 nfev = np.zeros(amprange.shape, dtype=np.int32)
 
 for waves in numwaves:
@@ -69,8 +72,8 @@ for waves in numwaves:
         
         print('-----')
         
-    np.savez('lyapunovs/lyaps_multicontour_{}modes.npz'.format(waves), amprange=amprange, lyaps=lyaps, lyapstds=lyapstds, nfev=nfev)
-
+    np.savez('lyapunovs/case{}_lyaps_multicontour_{}modes.npz'.format(case, waves), amprange=amprange, lyaps=lyaps, lyapstds=lyapstds, nfev=nfev)
+"""
 
 # %% Phase lyapunov exponents
 
@@ -150,15 +153,15 @@ np.savez('lyapunovs/lyaps_multicontour_longtimedependent_allmodes.npz', lyaps=ly
 
 # %% Poincare sections via amplitude of waves
 
-"""
-amprange = ['000']
+
+amprange = ['100']
 #amprange = ['100', '110']
 
 for i in range(len(amprange)):
     m = float(amprange[i])/100.0
     print(m)
-    pm.generateFullSection(np.ones(numeigs)*m, np.zeros(numeigs), 'sections/section_amp{}.npz'.format(amprange[i]))
-"""
+    pm.generateFullSection(np.ones(numeigs)*m, np.zeros(numeigs), 'sections/case{}_section_amp{}.npz'.format(case,amprange[i]), nparticles=97, sections=521)
+
 
 """
 ampmult = np.ones(numeigs)

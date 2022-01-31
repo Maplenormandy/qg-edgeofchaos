@@ -116,6 +116,7 @@ class EigenvalueSolver:
             vl = vl*np.sqrt(venergy[np.newaxis,:])
             vpsi = vpsi/np.sqrt(venergy[np.newaxis,:])
         
+        # w is the phase velocity, vr is q, vl is eta
         return {'w':w, 'vr':vr, 'vl':vl, 'vpsi':vpsi}
     
 # %%
@@ -171,6 +172,7 @@ class EigenvalueSolverFD:
         vl = vl*np.sqrt(vnorm[np.newaxis,:])
         vpsi = vpsi/np.sqrt(vnorm[np.newaxis,:])
         
+        # w is the phase velocity, vr is q, vl is eta
         return {'w':w, 'vr':vr, 'vl':vl, 'vpsi':vpsi, 'vh':vh}
 
 
