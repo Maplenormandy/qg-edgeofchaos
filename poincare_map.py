@@ -113,8 +113,8 @@ class PoincareMapper:
             dy[nparticles:] = uyf(xpts)*zonalmult - dopplerc
             
             for i in nonzero_eigs:
-                dy[:nparticles] += utyf[i](xpts)*np.cos(kys[i]*ypts - freqs[i]*t - phases_mod[i])*amps_mod[i]
-                dy[nparticles:] += -psif[i](xpts)*np.sin(kys[i]*ypts - freqs[i]*t - phases_mod[i])*kys[i]*amps_mod[i]
+                dy[nparticles:] += utyf[i](xpts)*np.cos(kys[i]*ypts - freqs[i]*t - phases_mod[i])*amps_mod[i]
+                dy[:nparticles] += -psif[i](xpts)*np.sin(kys[i]*ypts - freqs[i]*t - phases_mod[i])*kys[i]*amps_mod[i]
             
             #utys = np.array(list(utyf[i](xpts)*np.cos(kys[i]*ypts - freqs[i]*t - phases_mod[i])*amps_mod[i] for i in nonzero_eigs))
             #utxs = np.array(list(-psif[i](xpts)*np.sin(kys[i]*ypts - freqs[i]*t - phases_mod[i])*kys[i]*amps_mod[i] for i in nonzero_eigs))

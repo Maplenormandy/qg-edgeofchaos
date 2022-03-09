@@ -249,7 +249,7 @@ for i in range(len(amprange)):
     ampmult[numwaves:] = 0
     
     #pm.generateFullSection(np.ones(numeigs)*m, np.zeros(numeigs), 'sections/case{}_section_amp{}{}.npz'.format(case,amprange[i], suffix), nparticles=193, sections=3109, fancyspacing=True)
-    pm.generateFullSection(ampmult, np.zeros(numeigs), 'sections/case{}_section_amp{}{}.npz'.format(case,amprange[i], suffix), nparticles=521, sections=521, fancyspacing=True)
+    pm.generateFullSection(ampmult, np.zeros(numeigs), 'sections/case{}_section_amp{}{}.npz'.format(case,amprange[i], suffix), nparticles=193, sections=193, fancyspacing=True)
 
 
 

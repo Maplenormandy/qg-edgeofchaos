@@ -143,11 +143,14 @@ def saveSection(ind):
     
     fig, ax = plt.subplots(1, 1, figsize=(10.0, 10.0))
     ax.set_aspect('equal', adjustable='datalim')
+    
     ax.set_xlim([-np.pi,np.pi])
     ax.set_ylim([-np.pi,np.pi])
-    ax.scatter(yclip[nparticles::stride,::stride2], yclip[:nparticles:stride,::stride2], s=72.0/fig.dpi, marker='o', linewidths=0, c=colors[::stride,::stride2], cmap='Spectral', rasterized=True, vmin=-np.max(np.abs(colors)), vmax=np.max(np.abs(colors)))
     
     plt.tight_layout()
+    
+    ax.scatter(yclip[nparticles::stride,::stride2], yclip[:nparticles:stride,::stride2], s=72.0/fig.dpi, marker='o', linewidths=0, c=colors[::stride,::stride2], cmap='Spectral', rasterized=True, vmin=-np.max(np.abs(colors)), vmax=np.max(np.abs(colors)))
+    
     
     plt.savefig('extra_poincare_sections/case{}_section_ind{:03d}{}.png'.format(case, ind, suffix), dpi=100)
     
