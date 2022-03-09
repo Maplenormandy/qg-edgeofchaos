@@ -22,6 +22,7 @@ case = 1
 ampfile = np.load('dns_input/case{}/eigencomps_fd_smooth.npz'.format(case))
 eigamps = ampfile['amps']
 qbar = ampfile['qbar']
+suffix = '_energysort'
 
 # %% Get eigenfunctions
 
@@ -33,15 +34,41 @@ for ky in range(1,nky+1):
     print(ky)
     eigs[ky-1] = eigsolver.solveEigenfunctions(ky=ky, norm='action')
 
-# %% Pick out proper eigenfunctions
+# %% Compute the coherence of the eigenfunctions
+
+numofs = 127
+rsqt = np.zeros((eigamps.shape[0], numofs, eigamps.shape[2]))
+
+for i in range(numofs):
+    fitofs = i+1
+    
+    x = eigamps[:,:-fitofs,:]
+    y = eigamps[:,fitofs:,:]
+    
+    amat = np.sum(y * np.conj(x), axis=1) / np.sum(np.abs(x)**2, axis=1)
+    
+    residuals = y - (x * amat[:,np.newaxis,:])
+    vartot = np.average(np.abs(y)**2, axis=1)
+    varresid = np.average(np.abs(residuals)**2, axis=1)
+    
+    rsqt[:,i,:] = 1 - (varresid/vartot)
+
+rsquaredall = np.min(rsqt, axis=1)
+rsqinds = np.argsort(-rsquaredall, axis=None)
+
+# %% Pick out the eigenfunctions we're going to use
 
 # This is the info that we need filled out
-numeigs = 9
+numeigs = int(np.sum(rsquaredall > 0.76))
+print("Number of eigenfunctions: ", numeigs)
+
 psiv = np.zeros((numeigs, 2048))
 amps = np.zeros(numeigs)
 #fits = [None]*numeigs
 expfreqs = np.zeros(numeigs)
 expphases = np.zeros(numeigs)
+
+rsquared = np.zeros(numeigs)
 
 freqmult = np.zeros(numeigs, dtype=int)
 eignums = np.zeros(numeigs, dtype=int)
@@ -59,23 +86,16 @@ ampdevs = np.ones((numeigs, numsnaps))
 dt = 0.25
 t = np.linspace(0, 64, num=numsnaps, endpoint=True)
 
-# %% Compute the N most energetic eigenmodes
 
-eigenergymult = np.zeros((nky, 2048))
-for ky in range(1,len(eigs)+1):
-    eigenergymult[ky-1,:] = -np.sum(eigs[ky-1]['vpsi']*eigs[ky-1]['vr'], axis=0)
-    
-actions = np.average(np.abs(eigamps[:,:,:])**2, axis=1)
-
-energies = np.average(np.abs(eigamps[:,:,:])**2, axis=1) * eigenergymult
-energyinds = np.argsort(-energies, axis=None)
+dopplerc = 0.0
 
 for i in range(numeigs):
-    eig = energyinds[i] % 2048
-    ky = energyinds[i] // 2048 + 1
+    eig = rsqinds[i] % 2048
+    ky = rsqinds[i] // 2048 + 1
     
     kys[i] = ky
     eignums[i] = eig
+    rsquared[i] = rsquaredall[ky-1, eig]
 
     # Need to shift the phase of the amplitudes, since the FFT is in the domain [0,2pi]
     # while the real space coordinates are in the domain [-pi,pi]
@@ -84,7 +104,12 @@ for i in range(numeigs):
     amps[i] = np.sqrt(np.average(np.abs(amp)**2)) / 1024
     psiv[i,:] = np.real(eigs[ky-1]['vpsi'][:,eig])
     fit = Polynomial.fit(t,np.unwrap(np.angle(amp)), deg=1).convert()
-    expfreqs[i] = fit.coef[1]
+    if i == 0:
+        dopplerc = fit.coef[1]/ky
+        expfreqs[i] = 0.0
+        #expfreqs[i] = fit.coef[1] - ky*dopplerc
+    else:
+        expfreqs[i] = fit.coef[1] - ky*dopplerc
     expphases[i] = fit.coef[0]
     
     ampdevs[i,:] = (np.abs(amp)/1024) / amps[i]
@@ -117,12 +142,12 @@ phases = expphases
 
 # %% Output the input to the poincare section
 
-savedata = { 'psiv': psiv, 'kys': kys, 'freqmult': freqmult, 'phases': phases, 'amps': amps, 'uy': eigsolver.uy, 'freq': freqRes.x, 'qbar': qbar }
-np.savez('poincare_input/case{}_poincare_config_fd_smooth.npz'.format(case), **savedata)
+savedata = { 'psiv': psiv, 'kys': kys, 'freqmult': freqmult, 'phases': phases, 'amps': amps, 'uy': eigsolver.uy, 'freq': freqRes.x, 'qbar': qbar, 'rsquared': rsquared, 'rsquared': rsquared, 'eignums': eignums, 'dopplerc': dopplerc }
+np.savez('poincare_input/case{}_poincare_config_fd_smooth{}.npz'.format(case, suffix), **savedata)
 
 # %% Time-dependent data for the poincare section
 
-np.savez('poincare_input/case{}_eigencomponent_timedata.npz'.format(case), ampdevs=ampdevs, phasedevs=phasedevs)
+np.savez('poincare_input/case{}_eigencomponent_timedata{}.npz'.format(case, suffix), ampdevs=ampdevs, phasedevs=phasedevs)
 
 
 # %% Save some extra data for plotting
@@ -130,7 +155,7 @@ np.savez('poincare_input/case{}_eigencomponent_timedata.npz'.format(case), ampde
 avgenergy = np.sum(np.average(eigenergies, axis=1))
 timeenergies = np.sum(eigenergies, axis=0)
 
-np.savez('plot_scripts/case{}_eigencomponent_extradata.npz'.format(case), mode0_phasedeviation=mode0_phasedeviation, energydeviation=timeenergies/avgenergy)
+np.savez('plot_scripts/case{}_eigencomponent_extradata{}.npz'.format(case, suffix), mode0_phasedeviation=mode0_phasedeviation, energydeviation=timeenergies/avgenergy)
 
 # %% Save data for the validation test
 

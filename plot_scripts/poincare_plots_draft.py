@@ -17,7 +17,8 @@ mpl.rc('font', **font)
 
 # %% 
 
-basedata = np.load('../poincare_input/poincare_config_fd_smooth.npz')
+case = 1
+basedata = np.load('../poincare_input/case{}_poincare_config_fd_smooth.npz'.format(case))
 qbar = basedata['qbar']
 uy = basedata['uy']
 
@@ -46,21 +47,32 @@ uyf = circularInterpolant(uy)
 
 
 
+# %% Zonal flows
 
-# %% Wave breaking section
+"""
+fig, ax = plt.subplots(1, 1, figsize=(3.0, 10.0))
+ax.scatter(uyf(x), x, c=np.mod(np.angle(uyf(x) + 1j*hilbuyf(x))*3,2*np.pi), cmap='twilight', marker='.')
+ax.set_ylim([-np.pi, np.pi])
+
+plt.tight_layout()
+
+#plt.savefig('poincare_section_zonalflow.pdf', dpi=100)
+#plt.savefig('poincare_section_zonalflow.png', dpi=100)
+"""
+
+# %% Poincare Section
 
 tab20b = mpl.cm.get_cmap('tab20b')
 tab20c = mpl.cm.get_cmap('tab20c')
 
 
 
-fig, ax = plt.subplots(1, 2, sharey=True, gridspec_kw={'width_ratios': [5,1]}, figsize=(12.0, 10.0))
-ax[1].scatter(uyf(x), x, c=np.mod(np.angle(uyf(x) + 1j*hilbuyf(x))*3,2*np.pi), cmap='twilight', marker='.')
-ax[1].set_ylim([-np.pi, np.pi])
+fig, ax = plt.subplots(1, 1, figsize=(10.0, 10.0))
+#ax[1].scatter(uyf(x), x, c=np.mod(np.angle(uyf(x) + 1j*hilbuyf(x))*3,2*np.pi), cmap='twilight', marker='.')
+#ax[1].set_ylim([-np.pi, np.pi])
 
-suffix = 'switched'
-#data = np.load(amp_plot+'_full.npz')
-data = np.load('../sections/section_{}.npz'.format(suffix))
+suffix = 'amp000'
+data = np.load('../sections/case{}_section_{}.npz'.format(case,suffix))
 
 z0 = data['y'][:,0]
 yclip = data['yclip']
@@ -72,11 +84,13 @@ stride = 1
 stride2 = 1
 colors[:,:] = np.mod(np.angle(uyf(z0[:nparticles]) + 1j*hilbuyf(z0[:nparticles]))*3,2*np.pi)[:,np.newaxis]
 
-ax[0].set_aspect('equal', adjustable='datalim')
-ax[0].scatter(yclip[nparticles::stride,::stride2], yclip[:nparticles:stride,::stride2], s=72.0/fig.dpi, marker='o', linewidths=0, c=colors[::stride,::stride2], cmap='twilight', rasterized=True)
+ax.set_aspect('equal', adjustable='datalim')
+ax.scatter(yclip[nparticles::stride,::stride2], yclip[:nparticles:stride,::stride2], s=72.0/fig.dpi, marker='o', linewidths=0, c=colors[::stride,::stride2], cmap='twilight', rasterized=True)
+ax.set_xlim([-np.pi,np.pi])
+ax.set_ylim([-np.pi,np.pi])
 
 plt.tight_layout()
 #plt.tight_layout(h_pad=0.6)
 
-plt.savefig('poincare_section_{}.pdf'.format(suffix), dpi=100)
-plt.savefig('poincare_section_{}.png'.format(suffix), dpi=100)
+plt.savefig('poincare_section_case{}_{}.pdf'.format(case, suffix), dpi=100)
+plt.savefig('poincare_section_case{}_{}.png'.format(case, suffix), dpi=100)

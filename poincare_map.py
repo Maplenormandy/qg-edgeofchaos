@@ -67,6 +67,7 @@ class PoincareMapper:
         uyf = circularInterpolant(uy)
         
         qbarf = circularInterpolant(qbar)
+        self.qbarf = qbarf
         
         self.funcs = (psif, utyf, qtf, uyf)
         self.x = x
@@ -79,7 +80,7 @@ class PoincareMapper:
         self.qmins = [qbarf(uymin) + 8*(uymin) for uymin in self.uyminxs]
 
     # Poincare section method
-    def poincareSection(self, ampmult, phaseoffs, z0, sections, zonalmult=1.0, sectionsamps=1, u0=0.0):
+    def poincareSection(self, ampmult, phaseoffs, z0, sections, zonalmult=1.0, sectionsamps=1):
         data = self.data
         
         qbar = data['qbar']
@@ -91,7 +92,10 @@ class PoincareMapper:
         phases = data['phases']
         kys = data['kys']
         amps = data['amps']
+        dopplerc = data['dopplerc']
         numeigs = len(kys)
+        
+        nonzero_eigs = [i for i in range(numeigs) if ampmult[i] > 1e-8]
         
         psif, utyf, qtf, uyf = self.funcs
         
@@ -106,11 +110,11 @@ class PoincareMapper:
             xpts = np.mod(y[:nparticles]+np.pi, 2*np.pi)-np.pi
             ypts = np.mod(y[nparticles:]+np.pi, 2*np.pi)-np.pi
             
-            utys = np.array(list(utyf[i](xpts)*np.cos(kys[i]*ypts - (freqs[i] + kys[i]*u0)*t - phases_mod[i])*amps_mod[i] for i in range(numeigs)))
-            utxs = np.array(list(-psif[i](xpts)*np.sin(kys[i]*ypts - (freqs[i] + kys[i]*u0)*t - phases_mod[i])*kys[i]*amps_mod[i] for i in range(numeigs)))
+            utys = np.array(list(utyf[i](xpts)*np.cos(kys[i]*ypts - freqs[i]*t - phases_mod[i])*amps_mod[i] for i in nonzero_eigs))
+            utxs = np.array(list(-psif[i](xpts)*np.sin(kys[i]*ypts - freqs[i]*t - phases_mod[i])*kys[i]*amps_mod[i] for i in nonzero_eigs))
             
             dy[:nparticles] = np.sum(utxs, axis=0)
-            dy[nparticles:] = np.sum(utys, axis=0) + uyf(xpts)*zonalmult + u0
+            dy[nparticles:] = np.sum(utys, axis=0) + uyf(xpts)*zonalmult - dopplerc
             
             return dy
         
@@ -277,10 +281,16 @@ class PoincareMapper:
                 yclip.append(np.mod(yr+np.pi, 2*np.pi)-np.pi)
                 z0r = yr
                 if yr.shape[0]//2 > resamplelimit:
-                    sol = TempSol(t=t_eval, y=ytemp, nfev=nfev)
-                    return sol, yclip
+                    break
                 
+            t_eval = t_eval[:len(yclip)]
             sol = TempSol(t=t_eval, y=ytemp, nfev=nfev)
+            
+            if filename != None:
+                ydict = {'yclip{}'.format(ind) : yclip[ind] for ind in range(len(yclip))}
+                ydict2 = {'y{}'.format(ind) : sol.y[ind] for ind in range(len(yclip))}
+                np.savez(filename, t=sol.t, ampmult=ampmult, phaseoffs=phaseoffs, qcont=qcont, zonalmult=zonalmult, **ydict, **ydict2)
+                
             return sol, yclip
         else:
             
@@ -291,12 +301,75 @@ class PoincareMapper:
                 np.savez(filename, t=sol.t, y=sol.y, yclip=yclip, ampmult=ampmult, phaseoffs=phaseoffs, qcont=qcont, zonalmult=zonalmult)
             
             return sol, yclip
-
-    def generateFullSection(self, ampmult, phaseoffs, filename=None, zonalmult=1.0, nparticles=193, sections=3109):
-        #nparticles = 193
         
-        z0 = np.zeros(nparticles*2)
-        z0[:nparticles] = np.linspace(-np.pi, np.pi, num=nparticles, endpoint=False)
+    def fancySpace(self, ampmult, phaseoffs, zonalmult=1.0, nparticles=193):
+        data = self.data
+        
+        qbar = data['qbar']
+        
+        uy = data['uy']
+        psiv = data['psiv']
+        freq = data['freq']
+        freqs = freq*data['freqmult']
+        phases = data['phases']
+        kys = data['kys']
+        amps = data['amps']
+        numeigs = len(kys)
+        
+        psif, utyf, qtf, uyf = self.funcs
+        x = self.x
+        nx=len(x)
+        
+        amps_mod = amps * ampmult
+        phases_mod = phases + phaseoffs
+        
+        # Compute desried contour
+        qts = np.array(list((qtf[i](x)[:,np.newaxis])*(np.cos(kys[i]*x - phases_mod[i])[np.newaxis,:])*amps_mod[i] for i in range(numeigs)))
+        qplot = (qbar*zonalmult + 8*x)[:,np.newaxis] + np.sum(qts, axis=0)
+        
+        qbarf = self.qbarf
+        
+        xsamples = np.linspace(-np.pi, np.pi, num=nparticles, endpoint=False)
+        qsamples = qbarf(xsamples) + 8*xsamples
+        
+        z0 = np.ones(nparticles*2) * 8000.0
+        
+        for i in range(nparticles):
+            qcont = qsamples[i]
+            
+            if xsamples[i] < -3*np.pi/4:
+                contours1 = measure.find_contours(qplot, qcont)
+                contours2 = measure.find_contours(qplot, qcont+2*8*np.pi)
+                contours = contours1 + contours2
+            elif xsamples[i] > 3*np.pi/4:
+                contours1 = measure.find_contours(qplot, qcont)
+                contours2 = measure.find_contours(qplot, qcont-2*8*np.pi)
+                contours = contours1 + contours2
+            else:
+                contours = measure.find_contours(qplot, qcont)
+                
+            #print("{} - {} contours".format(qcont, len(contours)))
+            for c in contours:
+                # Ignore contours which begin and end on the same side
+                if np.abs(c[0,1] - c[-1,1]) < 1.0:
+                    continue
+                
+                c2 = (2*np.pi*c/2048) - np.pi
+                
+                ymin = np.argmin(c2[:,1])
+                if c2[ymin,1] < z0[nparticles+i]:
+                    z0[i] = c2[ymin,0]
+                    z0[nparticles+i] = c2[ymin,1]
+                    
+        return z0
+
+    def generateFullSection(self, ampmult, phaseoffs, filename=None, zonalmult=1.0, nparticles=193, sections=3109, fancyspacing=False):
+        #nparticles = 193
+        if fancyspacing:
+            z0 = self.fancySpace(ampmult, phaseoffs, zonalmult, nparticles)
+        else:
+            z0 = np.zeros(nparticles*2)
+            z0[:nparticles] = np.linspace(-np.pi, np.pi, num=nparticles, endpoint=False)
         
         sol, yclip = self.poincareSection(ampmult, phaseoffs, z0, sections, zonalmult=zonalmult)
         
@@ -340,51 +413,3 @@ class PoincareMapper:
         
         return lam.slope, lam.stderr
 
-
-
-# %% Zonal lyapunov exponents
-
-"""
-zonalrange = np.arange(0.0, 1.61, 0.05)
-
-lyaps = np.zeros(len(zonalrange))
-lyapstds = np.zeros(len(zonalrange))
-
-for ind in range(len(zonalrange)):
-    zonal = zonalrange[ind]
-    print(zonal)
-    
-    ampmult = np.ones(numeigs)
-    phaseoffs = np.zeros(numeigs)
-    
-    sol, yclip = generateBreakingSection(ampmult, phaseoffs, qmin, zonalmult=zonal)
-    lyap, lyapstd = findLyapunov(sol, yclip)
-    
-    lyaps[ind] = lyap
-    lyapstds[ind] = lyapstd
-    
-    print('-----')
-    
-np.savez('lyaps_zonal.npz', zonalrange=zonalrange, lyaps=lyaps, lyapstds=lyapstds)
-
-plt.semilogy(zonalrange, lyaps)
-"""
-
-
-# %% Poincare sections via amplitude of zonal flows
-
-"""
-amprange = ['00']
-
-for i in range(len(amprange)):
-    m = float(amprange[i])/10.0
-    print(m)
-    ampmults = np.zeros(numeigs)
-    ampmults[0] = 1.0
-    generateFullSection(ampmults, np.zeros(numeigs), 'z'+amprange[i]+'_test.npz', zonalmult=m, sections=512)
-"""
-
-
-# %%
-
-#followTracers(np.ones(numeigs), np.zeros(numeigs), 'tracers_10.npz')

@@ -19,28 +19,76 @@ from poincare_map import PoincareMapper
 
 # %% Set up Poincare Mapper
 
-case = 1
-pm = PoincareMapper('poincare_input/case{}_poincare_config_fd_smooth.npz'.format(case))
+suffix = '_uphmin'
+#suffix = ''
+case = 2
+pm = PoincareMapper('poincare_input/case{}_poincare_config_fd_smooth{}.npz'.format(case, suffix))
 numeigs = len(pm.data['kys'])
 
 
 # %% Generate some sections of breaking waves
 
 """
-pm.generateBreakingSection(np.ones(numeigs)*0.4, np.zeros(numeigs), pm.qmin, 16, 'sections/case{}_breaking_amp040.npz'.format(case))
-pm.generateBreakingSection(np.ones(numeigs)*1.0, np.zeros(numeigs), pm.qmin, 16, 'sections/case{}_breaking_amp100.npz'.format(case))
-pm.generateBreakingSection(np.ones(numeigs)*1.2, np.zeros(numeigs), pm.qmin, 16, 'sections/case{}_breaking_amp120.npz'.format(case))
+pm.generateBreakingSection(np.ones(numeigs)*0.4, np.zeros(numeigs), pm.qmin, 8, 'sections/case{}_breaking_amp040.npz'.format(case), resampling=True)
+pm.generateBreakingSection(np.ones(numeigs)*1.0, np.zeros(numeigs), pm.qmin, 8, 'sections/case{}_breaking_amp100.npz'.format(case), resampling=True)
+pm.generateBreakingSection(np.ones(numeigs)*1.2, np.zeros(numeigs), pm.qmin, 8, 'sections/case{}_breaking_amp120.npz'.format(case), resampling=True)
+"""
+
+#pm.generateBreakingSection(np.sqrt(pm.data['rsquared'])*0.4, np.zeros(numeigs), pm.qmin, 8, 'sections/case{}_breaking_amp040.npz'.format(case), resampling=True)
+#pm.generateBreakingSection(np.sqrt(pm.data['rsquared'])*1.0, np.zeros(numeigs), pm.qmin, 8, 'sections/case{}_breaking_amp100.npz'.format(case), resampling=True)
+#pm.generateBreakingSection(np.sqrt(pm.data['rsquared'])*1.2, np.zeros(numeigs), pm.qmin, 8, 'sections/case{}_breaking_amp120.npz'.format(case), resampling=True)
+
+
+# %% Lyapunov exponents versus number of modes kept
+
+"""
+numwaves = list(range(2, numeigs))
+lyaps = np.zeros(len(numwaves))
+lyapstds = np.zeros(len(numwaves))
+    
+    
+for ind in range(len(numwaves)):
+    waves = numwaves[ind]
+    print(waves)
+    
+    ampmult = np.ones(numeigs)
+    ampmult[waves:] = 0
+    phaseoffs = np.zeros(numeigs)
+    
+    for i in range(len(pm.qmins)):
+        sol, yclip = pm.generateBreakingSection(ampmult, phaseoffs, pm.qmins[i], sections=8, resampling=True)
+        lyap, lyapstd = pm.findLyapunov(sol, yclip, resampling=True)
+        
+        if lyap >= lyaps[ind]:
+            lyaps[ind] = lyap
+            lyapstds[ind] = lyapstd
+            
+        print('nfev:', sol.nfev)
+        
+    #lyaps[ind] = lyap
+    #lyapstds[ind] = lyapstd
+    
+        
+        
+    print('-----')
+        
+    np.savez('lyapunovs/case{}_lyaps_numwaves{}.npz'.format(case, suffix), numwaves=numwaves, lyaps=lyaps, lyapstds=lyapstds)
 """
 
 # %% Generate amplitude lyapunov exponents
 
 """
+print('contour locations')
 for i in range(len(pm.qmins)):
-    print('contour locations')
     print(pm.uyminxs[i])
 
-amprange = np.arange(0.0, 1.61, 0.1)
-numwaves = [1, 2, 3, 6, 9]
+amprange = np.arange(0.0, 1.61, 0.05)
+#numwaves = reversed(list(range(2,numeigs+1)))
+#numwaves = [24]
+if case == 1:
+    numwaves = [3, 4, 5, 6, 7, 8]
+else:
+    numwaves = [13, 14, 15, 16, 17, 18]
 nfev = np.zeros(amprange.shape, dtype=np.int32)
 
 for waves in numwaves:
@@ -56,7 +104,7 @@ for waves in numwaves:
         phaseoffs = np.zeros(numeigs)
         
         for i in range(len(pm.qmins)):
-            sol, yclip = pm.generateBreakingSection(ampmult, phaseoffs, pm.qmins[i], resampling=True)
+            sol, yclip = pm.generateBreakingSection(ampmult, phaseoffs, pm.qmins[i], sections=8, resampling=True)
             lyap, lyapstd = pm.findLyapunov(sol, yclip, resampling=True)
             
             if lyap >= lyaps[ind]:
@@ -73,12 +121,14 @@ for waves in numwaves:
         print('-----')
         
     np.savez('lyapunovs/case{}_lyaps_multicontour_{}modes.npz'.format(case, waves), amprange=amprange, lyaps=lyaps, lyapstds=lyapstds, nfev=nfev)
+    #np.savez('lyapunovs/case{}_lyaps_multicontour_5modes.npz'.format(case, waves), amprange=amprange, lyaps=lyaps, lyapstds=lyapstds, nfev=nfev)
+
 """
 
 # %% Phase lyapunov exponents
 
 """
-amprange = np.arange(1.0, 1.16, 0.05)
+amprange = np.arange(0.9, 1.15, 0.05)
 phrange = np.linspace(-np.pi, np.pi, endpoint=False, num=24)
 
 ampall, phall = np.meshgrid(amprange, phrange)
@@ -92,12 +142,13 @@ for ind in range(numall):
     ph = phall.ravel()[ind]
     print(m, ph)
     
-    ampmult = np.ones(numeigs)*m
+    ampmult = np.ones(numeigs)
     phaseoffs = np.zeros(numeigs)
     phaseoffs[0] = ph
+    ampmult[0] = m
     
     for i in range(len(pm.qmins)):
-        sol, yclip = pm.generateBreakingSection(ampmult, phaseoffs, pm.qmins[i], resampling=True)
+        sol, yclip = pm.generateBreakingSection(ampmult, phaseoffs, pm.qmins[i], resampling=True, sections=8)
         lyap, lyapstd = pm.findLyapunov(sol, yclip, resampling=True)
         
         if lyap >= lyaps[ind]:
@@ -111,11 +162,41 @@ for ind in range(numall):
     #lyapstds[ind] = lyapstd
     
     print('-----')
+    
+    np.savez('lyapunovs/case{}_lyaps_multicontour_allphases.npz'.format(case), amprange=amprange, phrange=phrange, lyaps=np.reshape(lyaps, ampall.shape), lyapstds=np.reshape(lyapstds, ampall.shape))
+"""
 
-lyaps = np.reshape(lyaps, ampall.shape)
-lyapstds = np.reshape(lyapstds, ampall.shape)
+# %% Phase Lyapunov exponents, in another way
 
-np.savez('lyapunovs/lyaps_multicontour_allphases.npz', amprange=amprange, phrange=phrange, lyaps=lyaps, lyapstds=lyapstds)
+"""
+phrange = np.linspace(-np.pi, np.pi, endpoint=False, num=24)
+
+data = np.load('lyapunovs/case{}_lyaps_multicontour_perwavephase.npz'.format(case))
+
+lyaps = data['lyaps']
+lyapstds = data['lyapstds']
+
+for k in range(numeigs):
+    for j in range(len(phrange)):
+        if lyapstds[j,k] > 0:
+            continue
+        
+        ampmult = np.ones(numeigs)
+        phaseoffs = np.zeros(numeigs)
+        phaseoffs[k] = phrange[j]
+        
+        print(k, phrange[j])
+        
+        for i in range(len(pm.qmins)):
+            sol, yclip = pm.generateBreakingSection(ampmult, phaseoffs, pm.qmins[i], resampling=True, sections=8)
+            lyap, lyapstd = pm.findLyapunov(sol, yclip, resampling=True)
+            
+            if lyap >= lyaps[j,k]:
+                lyaps[j,k] = lyap
+                lyapstds[j,k] = lyapstd
+        
+        print('-----')
+        np.savez('lyapunovs/case{}_lyaps_multicontour_perwavephase.npz'.format(case), phrange=phrange, lyaps=lyaps, lyapstds=lyapstds)
 """
 
 # %% Long time lyapunov exponents
@@ -154,13 +235,22 @@ np.savez('lyapunovs/lyaps_multicontour_longtimedependent_allmodes.npz', lyaps=ly
 # %% Poincare sections via amplitude of waves
 
 
+
 amprange = ['100']
 #amprange = ['100', '110']
 
+numwaves = numeigs
+
 for i in range(len(amprange)):
     m = float(amprange[i])/100.0
-    print(m)
-    pm.generateFullSection(np.ones(numeigs)*m, np.zeros(numeigs), 'sections/case{}_section_amp{}.npz'.format(case,amprange[i]), nparticles=97, sections=521)
+    print('sections/case{}_section_amp{}{}.npz'.format(case,amprange[i], suffix))
+    
+    ampmult = np.ones(numeigs)*m
+    ampmult[numwaves:] = 0
+    
+    #pm.generateFullSection(np.ones(numeigs)*m, np.zeros(numeigs), 'sections/case{}_section_amp{}{}.npz'.format(case,amprange[i], suffix), nparticles=193, sections=3109, fancyspacing=True)
+    pm.generateFullSection(ampmult, np.zeros(numeigs), 'sections/case{}_section_amp{}{}.npz'.format(case,amprange[i], suffix), nparticles=521, sections=521, fancyspacing=True)
+
 
 
 """

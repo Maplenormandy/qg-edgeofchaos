@@ -9,10 +9,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-font = {'family' : 'serif',
-        'size'   : 6}
+font = {'size'   : 6,
+        'family' : 'sans-serif',
+        'serif'  : ['CMU Serif'],
+        'sans-serif' : ['CMU Sans Serif']}
+
+linescale = 0.4
+mpl.rc('axes', unicode_minus=False, linewidth=linescale)
+
+tick_major = {'size': 3.5*linescale, 'width': 0.8*linescale}
+tick_minor = {'size': 2.0*linescale, 'width': 0.6*linescale}
+
+mpl.rc('xtick.major', **tick_major)
+mpl.rc('ytick.major', **tick_major)
+mpl.rc('xtick.minor', **tick_minor)
+mpl.rc('ytick.minor', **tick_minor)
+mpl.rc('xtick', direction='in')
+mpl.rc('ytick', direction='in')
 
 mpl.rc('font', **font)
+
+mpl.rc('mathtext', fontset='cm')
 
 # %% formatting for phase
 
@@ -47,12 +64,13 @@ def multiple_formatter(denominator=2, number=np.pi, latex='\pi'):
 
 # %% Figure generated via Scripts/Eigenfunctions/Trajectories/poincare_section_lyapunov.py
 
+case = 1
 tab20c = mpl.cm.get_cmap('tab20c')
 
 fig, ax = plt.subplots(1, 2, figsize=(3.375, 3.375*0.6), dpi=300)
 
 
-vardata = np.load('eigencomponent_extradata.npz')
+vardata = np.load('case{}_eigencomponent_extradata.npz'.format(case))
 
 mode0_phasedeviation = vardata['mode0_phasedeviation']
 energydeviation = vardata['energydeviation']
@@ -65,8 +83,14 @@ ax[0].axvspan(np.sqrt(np.min(energydeviation)), np.sqrt(np.max(energydeviation))
 
 
 j = 0
-for i in [2, 3, 6, 9]:
-    data = np.load('../lyapunovs/lyaps_multicontour_{}modes.npz'.format(i))
+
+if case == 1:
+    numwaves = [3, 4, 5, 6, 7, 8]
+else:
+    numwaves = [13, 14, 15, 16, 17]
+
+for i in numwaves:
+    data = np.load('../lyapunovs/case{}_lyaps_multicontour_{}modes.npz'.format(case,i))
     lyaps = data['lyaps']
     lyapstds = data['lyapstds']
     amprange = data['amprange']
@@ -80,16 +104,17 @@ ax[0].legend(loc='upper left')
 ax[0].set_yscale('log')
 ax[0].set_xlabel('Mode amplitude')
 ax[0].yaxis.set_minor_locator(plt.NullLocator())
-ax[0].set_ylim([5e-6, 5e2])
+#ax[0].set_ylim([5e-6, 5e2])
 ax[0].set_title('vs. number of modes')
 
-data = np.load('../lyapunovs/lyaps_multicontour_allphases.npz')
+"""
+data = np.load('../lyapunovs/case{}_lyaps_multicontour_allphases.npz'.format(case))
 amprange = data['amprange']
 phrange = data['phrange']
 lyaps = data['lyaps']
 lyapstds = data['lyapstds']
 
-ax[1].axvspan(np.min(mode0_phasedeviation), np.max(mode0_phasedeviation), color=tab20c(7.5/20.0))
+#ax[1].axvspan(np.min(mode0_phasedeviation), np.max(mode0_phasedeviation), color=tab20c(7.5/20.0))
 #ax[1].axvline(0.0, ls='--', c=tab20c(4.5/20.0))
 
 for i in range(len(amprange)):
@@ -106,11 +131,28 @@ ax[1].xaxis.set_major_locator(plt.MultipleLocator(np.pi / 2))
 ax[1].xaxis.set_major_formatter(plt.FuncFormatter(multiple_formatter()))
 ax[1].yaxis.set_minor_locator(plt.NullLocator())
 ax[1].set_title('vs. phase of mode 1')
+"""
+
+data = np.load('../lyapunovs/case{}_lyaps_numwaves_uphsort.npz'.format(case))
+
+numwaves = data['numwaves']
+lyaps = data['lyaps']
+lyapstds = data['lyapstds']
+
+i=0
+ax[1].plot(numwaves, lyaps, c=tab20c((15.5-i)/20.0), marker='.')
+    
+ax[1].set_yscale('log')
+#ax[1].xaxis.set_major_locator(plt.MultipleLocator(np.pi / 2))
+#ax[1].xaxis.set_major_formatter(plt.FuncFormatter(multiple_formatter()))
+#ax[1].yaxis.set_minor_locator(plt.NullLocator())
+
 
 plt.suptitle('Lyapunov Exponents')
 
 plt.tight_layout(h_pad=1.6)
 plt.tight_layout(h_pad=1.6)
 
-plt.savefig('lyapunov_exponents.pdf', dpi=200)
-plt.savefig('lyapunov_exponents.png', dpi=300)
+
+#plt.savefig('lyapunov_exponents.pdf', dpi=200)
+#plt.savefig('lyapunov_exponents.png', dpi=300)

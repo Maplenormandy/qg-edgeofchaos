@@ -1,6 +1,7 @@
 # Raw data
 *.h5
 *.npy
+*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
