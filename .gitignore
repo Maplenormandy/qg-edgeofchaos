@@ -2,6 +2,7 @@
 *.h5
 *.npy
 *.png
+*.out
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

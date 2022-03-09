@@ -22,8 +22,8 @@ case = 1
 ampfile = np.load('dns_input/case{}/eigencomps_fd_smooth.npz'.format(case))
 eigamps = ampfile['amps']
 qbar = ampfile['qbar']
-suffix = '_uphmin'
-usemin = True
+suffix = '_uphavg'
+usemin = False
 
 # %% Get eigenfunctions
 
@@ -48,16 +48,16 @@ rsqt = np.zeros((eigamps.shape[0], numofs, eigamps.shape[2]))
 
 for i in range(numofs):
     fitofs = i+1
-    
+
     x = eigamps[:,:-fitofs,:]
     y = eigamps[:,fitofs:,:]
-    
+
     amat = np.sum(y * np.conj(x), axis=1) / np.sum(np.abs(x)**2, axis=1)
-    
+
     residuals = y - (x * amat[:,np.newaxis,:])
     vartot = np.average(np.abs(y)**2, axis=1)
     varresid = np.average(np.abs(residuals)**2, axis=1)
-    
+
     rsqt[:,i,:] = 1 - (varresid/vartot)
 
 rsquaredall = np.min(rsqt, axis=1)
@@ -91,9 +91,12 @@ inds = uphinds
 # %% Pick out the eigenfunctions we're going to use
 
 if case == 1:
-    numeigs = 8
+    #numeigs = 8
+    numeigs = 5
 else:
-    numeigs = 36
+    #numeigs = 36
+    #numeigs = 9
+    numeigs = 22
 
 # This is the info that we need filled out
 
@@ -132,7 +135,7 @@ t = np.linspace(0, 64, num=numsnaps, endpoint=True)
 for i in range(numeigs):
     eig = inds[i] % 2048
     ky = inds[i] // 2048 + 1
-    
+
     kys[i] = ky
     eignums[i] = eig
     rsquared[i] = rsquaredall[ky-1, eig]
@@ -145,16 +148,16 @@ for i in range(numeigs):
         amps[i] = np.sqrt(np.min(np.abs(amp)**2)) / 1024
     else:
         amps[i] = np.sqrt(np.average(np.abs(amp)**2)) / 1024
-    
+
     psiv[i,:] = np.real(eigs[ky-1]['vpsi'][:,eig])
     fit = Polynomial.fit(t,np.unwrap(np.angle(amp)), deg=1).convert()
 
     expfreqs[i] = fit.coef[1]
     expphases[i] = fit.coef[0]
-    
+
     ampdevs[i,:] = (np.abs(amp)/1024) / amps[i]
     phasedevs[i,:] = np.unwrap(np.angle(amp)) - expphases[i]
-    
+
     eigenergies[i,:] = np.abs(amp)**2 * -np.sum(eigs[ky-1]['vpsi'][:,eig]*eigs[ky-1]['vr'][:,eig])
     if i == 0:
         mode0_phasedeviation = np.unwrap(np.angle(amp)) - expfreqs[0]*t - expphases[0]
@@ -174,15 +177,15 @@ expfreqs = expfreqs - kys*dopplerc
 
 def l1_dev(basefreq):
     totaldev = 0.0
-    
+
     for i in range(numeigs):
         expfreq = expfreqs[i]
         amp = amps[i]
-        
+
         fracparta = (expfreq / basefreq - np.round(expfreq / basefreq)) * basefreq
-        
+
         totaldev = totaldev + np.abs(fracparta) * (amp / ky)**2
-        
+
     return totaldev
 
 freqsearchfunc = lambda x: l1_dev(-np.exp(x))
@@ -250,7 +253,7 @@ for i in range(numeigs):
     amps[i] = 2 * np.pi
     psiv[i,:] = -np.cos(np.round(np.sqrt(25-ky**2))*x) / 2 / np.pi / 25
     expphases[i] = 0.0
-    
+
 phases = expphases
 
 
