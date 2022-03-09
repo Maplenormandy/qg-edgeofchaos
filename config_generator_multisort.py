@@ -18,12 +18,12 @@ from chm_utils import EigenvalueSolverFD
 
 # %% Load data
 
-case = 2
+case = 1
 ampfile = np.load('dns_input/case{}/eigencomps_fd_smooth.npz'.format(case))
 eigamps = ampfile['amps']
 qbar = ampfile['qbar']
-suffix = '_uphavg'
-usemin = False
+suffix = '_uphmin'
+usemin = True
 
 # %% Get eigenfunctions
 
@@ -93,7 +93,7 @@ inds = uphinds
 if case == 1:
     numeigs = 8
 else:
-    numeigs = 48
+    numeigs = 36
 
 # This is the info that we need filled out
 

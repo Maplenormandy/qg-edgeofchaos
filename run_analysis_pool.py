@@ -5,9 +5,19 @@ Created on Thu Nov 11 10:40:57 2021
 @author: maple
 """
 
+import concurrent.futures
+#from multiprocessing import Pool
+
 import numpy as np
+
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
+
 from poincare_map import PoincareMapper
-from multiprocessing import Pool
+
+import scipy.interpolate
+import scipy.signal
 
 # %% Set up Baseline Poincare Mapper
 
@@ -20,164 +30,134 @@ from multiprocessing import Pool
 
 # %% Set up Poincare Mapper
 
+suffix = '_uphavg'
+#suffix = ''
 case = 1
-pm = PoincareMapper('poincare_input/case{}_poincare_config_fd_smooth.npz'.format(case))
+pm = PoincareMapper('poincare_input/case{}_poincare_config_fd_smooth{}.npz'.format(case, suffix))
 numeigs = len(pm.data['kys'])
 
+timedata = np.load('poincare_input/case{}_eigencomponent_timedata{}.npz'.format(case, suffix))
 
-# %% Generate some sections of breaking waves
+# %% Prepare Poincare section plots
 
-"""
-pm.generateBreakingSection(np.ones(numeigs)*0.4, np.zeros(numeigs), pm.qmin, 16, 'sections/case{}_breaking_amp040.npz'.format(case))
-pm.generateBreakingSection(np.ones(numeigs)*1.0, np.zeros(numeigs), pm.qmin, 16, 'sections/case{}_breaking_amp100.npz'.format(case))
-pm.generateBreakingSection(np.ones(numeigs)*1.2, np.zeros(numeigs), pm.qmin, 16, 'sections/case{}_breaking_amp120.npz'.format(case))
-"""
+qbar = pm.data['qbar']
+uy = pm.data['uy']
 
-# %% Generate amplitude lyapunov exponents
+nx = 2048
+x = np.linspace(-np.pi, np.pi, num=nx, endpoint=False)
 
+# Set up interpolation functions
+pad = 4
+xp = np.zeros(nx+2*pad)
+xp[pad:-pad] = x
+xp[:pad] = x[-pad:] - 2*np.pi
+xp[-pad:] = x[:pad] + 2*np.pi
 
-for i in range(len(pm.qmins)):
-    print('contour locations')
-    print(pm.uyminxs[i])
-
-amprange = np.arange(0.0, 1.61, 0.2)
-numwaves = [3]
-nfev = np.zeros(amprange.shape, dtype=np.int32)
-
-for waves in numwaves:
-    lyaps = np.zeros(len(amprange))
-    lyapstds = np.zeros(len(amprange))
+def circularInterpolant(vec):
+    vecp = np.zeros(nx+2*pad)
+    vecp[pad:-pad] = vec
+    vecp[:pad] = vec[-pad:]
+    vecp[-pad:] = vec[:pad]
     
-    with Pool(2) as p:
-        def lyapind(ind):
-            m = amprange[ind]
-            print(m, waves)
-            
-            ampmult = np.ones(numeigs)*m
-            ampmult[waves:] = 0
-            phaseoffs = np.zeros(numeigs)
-            
-            lyapmax = 0.0
-            lyapmaxstd = 0.0
-            
-            for i in range(len(pm.qmins)):
-                sol, yclip = pm.generateBreakingSection(ampmult, phaseoffs, pm.qmins[i], resampling=True)
-                lyap, lyapstd = pm.findLyapunov(sol, yclip, resampling=True)
-                
-                if lyap >= lyapmax:
-                    lyapmax = lyap
-                    lyapmaxstd = lyapstd
-                    
-                print('nfev:', sol.nfev)
-                
-                print('-----')
-            
-            return (lyapmax, lyapmaxstd)
-                
-        results = p.map(lyapind, range(len(amprange)))
-        
-        for ind in range(len(amprange)):
-            lyaps[ind] = results[i][0]
-            lyapstds[ind] = results[i][1]
-            
-        
-    np.savez('./lyapunovs/case{}_lyaps_multicontour_{}modes.npz'.format(case, waves), amprange=amprange, lyaps=lyaps, lyapstds=lyapstds, nfev=nfev)
+    return scipy.interpolate.interp1d(xp, vecp, kind='quadratic')
 
+uyfft = np.fft.rfft(uy)
+hilbuy = np.fft.irfft(1j*uyfft)
+hilbuyf = circularInterpolant(hilbuy)
+uyf = circularInterpolant(uy)
 
-# %% Phase lyapunov exponents
+# Compute regions of zonal flow minima and maxima
+uyminxs = x[scipy.signal.argrelextrema(uy, np.less)]
+uymaxxs = x[scipy.signal.argrelextrema(uy, np.greater)]
 
-"""
-amprange = np.arange(1.0, 1.16, 0.05)
-phrange = np.linspace(-np.pi, np.pi, endpoint=False, num=24)
-
-ampall, phall = np.meshgrid(amprange, phrange)
-numall = len(ampall.ravel())
-
-lyaps = np.zeros(numall)
-lyapstds = np.zeros(numall)
-
-for ind in range(numall):
-    m = ampall.ravel()[ind]
-    ph = phall.ravel()[ind]
-    print(m, ph)
-    
-    ampmult = np.ones(numeigs)*m
-    phaseoffs = np.zeros(numeigs)
-    phaseoffs[0] = ph
-    
-    for i in range(len(pm.qmins)):
-        sol, yclip = pm.generateBreakingSection(ampmult, phaseoffs, pm.qmins[i], resampling=True)
-        lyap, lyapstd = pm.findLyapunov(sol, yclip, resampling=True)
-        
-        if lyap >= lyaps[ind]:
-            lyaps[ind] = lyap
-            lyapstds[ind] = lyapstd
-    
-    #sol, yclip = pm.generateBreakingSection(ampmult, phaseoffs, pm.qmin)
-    #lyap, lyapstd = pm.findLyapunov(sol, yclip)
-    
-    #lyaps[ind] = lyap
-    #lyapstds[ind] = lyapstd
-    
-    print('-----')
-
-lyaps = np.reshape(lyaps, ampall.shape)
-lyapstds = np.reshape(lyapstds, ampall.shape)
-
-np.savez('lyapunovs/lyaps_multicontour_allphases.npz', amprange=amprange, phrange=phrange, lyaps=lyaps, lyapstds=lyapstds)
-"""
-
-# %% Long time lyapunov exponents
-
-"""
-timedata = np.load('./poincare_input/eigencomponent_longtimedata.npz')
-
-ampdevs = timedata['ampdevs']
-phasedevs = timedata['phasedevs']
-
-t = np.linspace(2400, 3600, num=13, endpoint=True)
-lyaps = np.zeros(shape=(3,len(t)))
-lyapstds = np.zeros(shape=(3,len(t)))
-
-for ind in range(len(t)):
-    print(t[ind])
-    
-    for i in range(len(pm.qmins)):
-        sol, yclip = pm.generateBreakingSection(ampdevs[:,ind], phasedevs[:,ind], pm.qmins[i], resampling=True)
-        lyap, lyapstd = pm.findLyapunov(sol, yclip, resampling=True)
-        
-        lyaps[i,ind] = lyap
-        lyapstds[i,ind] = lyapstd
-    
-    #sol, yclip = pm.generateBreakingSection(ampdevs[:,ind], phasedevs[:,ind], pm.qmin, sections=20, resampling=True)
-    #lyap, lyapstd = pm.findLyapunov(sol, yclip, resampling=True)
-    
-    #lyaps[ind] = lyap
-    #lyapstds[ind] = lyapstd
-    
-    print('-----')
-    
-np.savez('lyapunovs/lyaps_multicontour_longtimedependent_allmodes.npz', lyaps=lyaps, lyapstds=lyapstds)
-"""
 
 # %% Poincare sections via amplitude of waves
 
-"""
-amprange = ['100']
-#amprange = ['100', '110']
 
-for i in range(len(amprange)):
-    m = float(amprange[i])/100.0
-    print(m)
-    pm.generateFullSection(np.ones(numeigs)*m, np.zeros(numeigs), 'sections/case{}_section_amp{}.npz'.format(case,amprange[i]), nparticles=97, sections=521)
-"""
+def saveSection(ind):
+    ampmult = timedata['ampdevs'][:,ind]
+    phaseofs = timedata['phasedevs'][:,ind]
+    
+    np.savez('extra_poincare_sections/case{}_section_ind{:03d}{}.npz'.format(case, ind, suffix), ind)
+    
+    pm.generateFullSection(ampmult, phaseofs, 'extra_poincare_sections/case{}_section_ind{:03d}{}.npz'.format(case, ind, suffix), nparticles=15, sections=101, fancyspacing=True)
+    data = np.load('extra_poincare_sections/case{}_section_ind{:03d}{}.npz'.format(case, ind, suffix))
+    
+    z0 = data['y'][:,0]
+    yclip = data['yclip']
+    
+    nparticles = len(z0)//2
+    colors = np.zeros((nparticles, yclip.shape[1]))
+    
+    rotation_number = (data['y'][nparticles:,-1] - data['y'][nparticles:,0]) / data['y'].shape[1] / 2 / np.pi
+    xavg = np.average(data['y'][:nparticles,:], axis=1)
+    
+    rotcolors = np.zeros((yclip.shape[0]//2, yclip.shape[1]))
+    
+    # Compute index of shearless curves
+    rotmins = np.zeros(uyminxs.shape, dtype=int)
+    rotmaxs = np.zeros(uymaxxs.shape, dtype=int)
+    
+    for i in range(len(uyminxs)):
+        rotmins[i] = np.argmin(rotation_number - (np.abs(xavg - uyminxs[i])<0.2)*1000.0)
+        rotcolors[rotmins[i]:,:] += 0.5
+        rotcolors[rotmins[i]+1:,:] += 0.5
+    
+    for i in range(len(uymaxxs)):
+        rotmaxs[i] = np.argmax(rotation_number + (np.abs(xavg - uymaxxs[i])<0.2)*1000.0)
+        rotcolors[rotmaxs[i]:,:] -= 0.5
+        rotcolors[rotmaxs[i]+1:,:] -= 0.5
+    
+    # Compute "mixing lengths"
+    stdresid = np.zeros(nparticles)
 
-"""
-ampmult = np.ones(numeigs)
-amps = pm.data['amps']
-ampmult[0] = amps[7]/amps[0]
-ampmult[7] = amps[0]/amps[7]
 
-print('switched')
-pm.generateFullSection(ampmult, np.zeros(numeigs), 'sections/section_switched.npz')
-"""
+    for i in range(nparticles):
+        xall = data['y'][i,:] - xavg[i]
+        
+        nvar = 9
+        
+        ymat = np.zeros((nvar, len(xall)-nvar))
+        xmat = np.zeros((nvar, len(xall)-nvar))
+        
+        for j in range(nvar):
+            if j == 0:
+                ymat[j,:] = xall[nvar-j:]
+            else:
+                ymat[j,:] = xall[nvar-j:-j]
+            
+            xmat[j,:] = xall[nvar-j-1:-(j+1)]
+        
+        amat = ymat @ np.linalg.pinv(xmat)
+        residuals = ymat - (amat @ xmat)
+        
+        stdresid[i] = np.sqrt(np.var(residuals[0,:]))
+    
+    if np.max(rotcolors) > 0.5:
+        colors = stdresid[:, np.newaxis] * np.sign(rotcolors-0.5)
+    else:
+        colors = stdresid[:, np.newaxis] * np.sign(rotcolors+0.5)
+    
+    stride = 1
+    stride2 = 1
+    
+    fig, ax = plt.subplots(1, 1, figsize=(10.0, 10.0))
+    ax.set_aspect('equal', adjustable='datalim')
+    ax.set_xlim([-np.pi,np.pi])
+    ax.set_ylim([-np.pi,np.pi])
+    ax.scatter(yclip[nparticles::stride,::stride2], yclip[:nparticles:stride,::stride2], s=72.0/fig.dpi, marker='o', linewidths=0, c=colors[::stride,::stride2], cmap='Spectral', rasterized=True, vmin=-np.max(np.abs(colors)), vmax=np.max(np.abs(colors)))
+    
+    plt.tight_layout()
+    
+    plt.savefig('extra_poincare_sections/case{}_section_ind{:03d}{}.png'.format(case, ind, suffix), dpi=100)
+    
+    return ind
+
+
+if __name__ == '__main__':
+    with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
+        results = executor.map(saveSection, range(8))
+        for result in results:
+            print(result)
+
+

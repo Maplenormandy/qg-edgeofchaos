@@ -19,7 +19,7 @@ from poincare_map import PoincareMapper
 
 # %% Set up Poincare Mapper
 
-suffix = '_uphmin'
+suffix = '_energymin'
 #suffix = ''
 case = 2
 pm = PoincareMapper('poincare_input/case{}_poincare_config_fd_smooth{}.npz'.format(case, suffix))

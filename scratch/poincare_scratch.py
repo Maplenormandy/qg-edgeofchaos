@@ -36,7 +36,7 @@ mpl.rc('mathtext', fontset='cm')
 
 # %% 
 
-case = 1
+case = 2
 basedata = np.load('../poincare_input/case{}_poincare_config_fd_smooth_coherent.npz'.format(case))
 qbar = basedata['qbar']
 uy = basedata['uy']

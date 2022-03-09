@@ -110,11 +110,17 @@ class PoincareMapper:
             xpts = np.mod(y[:nparticles]+np.pi, 2*np.pi)-np.pi
             ypts = np.mod(y[nparticles:]+np.pi, 2*np.pi)-np.pi
             
-            utys = np.array(list(utyf[i](xpts)*np.cos(kys[i]*ypts - freqs[i]*t - phases_mod[i])*amps_mod[i] for i in nonzero_eigs))
-            utxs = np.array(list(-psif[i](xpts)*np.sin(kys[i]*ypts - freqs[i]*t - phases_mod[i])*kys[i]*amps_mod[i] for i in nonzero_eigs))
+            dy[nparticles:] = uyf(xpts)*zonalmult - dopplerc
             
-            dy[:nparticles] = np.sum(utxs, axis=0)
-            dy[nparticles:] = np.sum(utys, axis=0) + uyf(xpts)*zonalmult - dopplerc
+            for i in nonzero_eigs:
+                dy[:nparticles] += utyf[i](xpts)*np.cos(kys[i]*ypts - freqs[i]*t - phases_mod[i])*amps_mod[i]
+                dy[nparticles:] += -psif[i](xpts)*np.sin(kys[i]*ypts - freqs[i]*t - phases_mod[i])*kys[i]*amps_mod[i]
+            
+            #utys = np.array(list(utyf[i](xpts)*np.cos(kys[i]*ypts - freqs[i]*t - phases_mod[i])*amps_mod[i] for i in nonzero_eigs))
+            #utxs = np.array(list(-psif[i](xpts)*np.sin(kys[i]*ypts - freqs[i]*t - phases_mod[i])*kys[i]*amps_mod[i] for i in nonzero_eigs))
+            
+            #dy[:nparticles] = np.sum(utxs, axis=0)
+            #dy[nparticles:] = np.sum(utys, axis=0) + uyf(xpts)*zonalmult - dopplerc
             
             return dy
         
