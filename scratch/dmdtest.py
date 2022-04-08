@@ -27,6 +27,8 @@ qbar = ampfile['qbar']
 
 dt = 0.25
 
+nx = 2048
+xplot = np.linspace(-np.pi, np.pi, num=nx, endpoint=False)
 
 # %%
 
@@ -44,17 +46,20 @@ for ky in range(1,nky+1):
         np.savez('case{}_eigsolver_ky{}.npz'.format(case, ky), eigs[ky-1])
     
 # %% Compute DMD
-    
-ky = 1
-trunceigs = 7
+
+eigrange = np.arange(30, 80, dtype=int)
+
+
+ky = 5
+#trunceigs = 7
 
 delay = 1
-ymat = eigamps[ky-1,delay:,:trunceigs].T
-xmat = eigamps[ky-1,:-delay,:trunceigs].T
+ymat = (eigamps[ky-1,delay:,:].T)[eigrange,:]
+xmat = (eigamps[ky-1,:-delay,:].T)[eigrange,:]
 
 u0, s0, vh0 = np.linalg.svd(xmat, full_matrices=False)
 
-rank = 7
+rank = 4
 polar = False
 
 u = u0[:,:rank]
@@ -73,8 +78,8 @@ dmdleftmodes = u @ vl
 dmdtraces = np.conj(dmdleftmodes.T) @ xmat
 
 # Compute rsquared of traces
-xt = dmdtraces[:,:-1]
-yt = dmdtraces[:,1:]
+xt = dmdtraces[:,:-delay]
+yt = dmdtraces[:,delay:]
 at = np.sum(yt * np.conj(xt), axis=1) / (np.sum(xt*np.conj(xt), axis=1))
 rst = 1.0 - np.sum(np.abs(yt - xt*at[:,np.newaxis])**2, axis=1) / np.sum(np.abs(yt)**2, axis=1)
 
@@ -87,7 +92,7 @@ print(rsquared)
 
 fig = plt.figure()
 
-maxplot = 8
+maxplot = 4
 plotrank = min((maxplot,rank))
 for i in range(plotrank):
     ax = plt.subplot(maxplot, 2, i*2+1)
@@ -96,15 +101,13 @@ for i in range(plotrank):
     
     eigcorresp = np.argmax(np.abs(dmdmodes[:,dmdnum]))
     dmdamp = dmdmodes[eigcorresp,dmdnum]
-    dmdplot = (eigs[ky-1]['vpsi'][:,:trunceigs] @ dmdmodes[:,dmdnum]) / (dmdamp / np.abs(dmdamp))
+    dmdplot = (eigs[ky-1]['vpsi'][:,eigrange] @ dmdmodes[:,dmdnum]) / (dmdamp / np.abs(dmdamp))
     
     ax.plot(np.real(dmdplot), c='tab:blue')
     ax.plot(np.imag(dmdplot), c='tab:blue', ls='--')
-    
-    #ax2 = ax.twinx()
-    
-    ax.plot(eigs[ky-1]['vpsi'][:,eigcorresp]*np.abs(dmdamp), c='tab:orange')
+    ax.plot(eigs[ky-1]['vpsi'][:,eigrange[eigcorresp]]*np.abs(dmdamp), c='tab:orange')
     
     ax2 = plt.subplot(maxplot, 2, i*2+2)
     ax2.plot(np.real(dmdtraces[dmdnum,:]), c='tab:blue')
     ax2.plot(np.imag(dmdtraces[dmdnum,:]), c='tab:blue', ls='--')
+    ax2.set_title('r2 = {}'.format(rst[dmdnum]))

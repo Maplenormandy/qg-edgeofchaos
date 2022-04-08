@@ -12,6 +12,8 @@ import h5py
 import matplotlib as mpl
 from numpy.polynomial import Polynomial
 import scipy.optimize
+import scipy.signal
+import scipy
 
 import sys, os
 sys.path.append(os.path.abspath('../qg_dns/analysis/eigenvectors'))
@@ -22,7 +24,7 @@ from chm_utils import EigenvalueSolverFD
 # %% Load data
 
 case = 2
-ampfile = np.load('../dns_input/case{}/eigencomps_fd_smooth.npz'.format(case))
+ampfile = np.load('../dns_input/case{}/eigencomps_fd_qbar.npz'.format(case))
 eigamps = ampfile['amps']
 qbar = ampfile['qbar']
 
@@ -106,7 +108,7 @@ scaleinds = np.argsort(k2eig, axis=None, kind='stable')
 
 uphinds = np.argsort(np.array([eigs[ky-1]['w'] for ky in range(1,len(eigs)+1)]), axis=None)
 
-numofs = 1
+numofs = 64
 rsqt = np.zeros((rsquared0.shape[0], numofs, rsquared0.shape[1]))
 rt = np.arange(numofs)*dt
 
@@ -131,8 +133,8 @@ inds = uphinds
 
 # %%
 
-nrows = 12
-ncols = 8
+nrows = 8
+ncols = 4
 f, ax = plt.subplots(nrows, ncols) #, gridspec_kw={'width_ratios' : [3,1,3,1,3,1]})
 
 t = np.linspace(0, 64, num=257, endpoint=True)
@@ -146,8 +148,8 @@ for i in range(nrows*ncols):
     ky = inds[i] // 2048 + 1
     kx = np.argmax(np.abs(np.fft.rfft(np.real(eigs[ky-1]['vl'][:,eig]))))
     
-    #ax[j,k].set_title('ky={}, kx={}, eig={}, r2={}'.format(ky,kx,eig,np.round(rsquared[ky-1, eig],2)))
-    ax[j,k].set_title('r2={}'.format(np.round(rsquared[ky-1, eig],2)))
+    ax[j,k].set_title('ky={}, kx={}, eig={}, r2={}'.format(ky,kx,eig,np.round(rsquared[ky-1, eig],2)))
+    #ax[j,k].set_title('r2={}'.format(np.round(rsquared[ky-1, eig],2)))
     #ax.set_aspect('equal')
     ax[j,k].plot(t, np.real(eigamps[ky-1,:,eig]), c='#1f77b4')
     ax[j,k].plot(t, np.imag(eigamps[ky-1,:,eig]), ls='--', c='#1f77b4')
@@ -174,7 +176,7 @@ for i in range(nrows*ncols):
     #ax[j,k+1].set_yticks([])
     #ax[j,k+1].axis('off')
 
-# %%
+# %% Plot of rsquared over time
     
 
 f, ax = plt.subplots(nrows, ncols)
@@ -190,16 +192,47 @@ for i in range(nrows*ncols):
     #ax[j,k].set_ylim([-0.05,1.05])
     ax[j,k].plot(t, np.ones(t.shape), c='k', ls='--')
     ax[j,k].plot(t, np.zeros(t.shape), c='k', ls='--')
+    
+# %% Compute autocorrelation and compare with rsquared
 
+"""
+i = 1
 
-# %%
+eig = inds[i] % 2048
+ky = inds[i] // 2048 + 1
 
+fig = plt.figure()
+ax = plt.subplot(111)
+ax.plot(rt, rsqt[ky-1,:,eig])
+
+autocorrel = scipy.signal.correlate(eigamps[ky-1,:,eig], eigamps[ky-1,:,eig], mode='full')
+correllags = scipy.signal.correlation_lags(257, 257, mode='full')
+#yamps1 = np.cumsum(np.abs(eigamps[ky-1,::-1,eig])**2)
+#yamps = np.cumsum(np.abs(eigamps[ky-1,:,eig])**2)
+ycomb = np.sum(np.abs(eigamps[ky-1,:,eig])**2)
+
+axt = ax.twinx()
+
+axt.plot(correllags/4.0, np.abs(autocorrel/ycomb)**2, c='tab:orange')
+"""
+
+# %% Plot of rsquared versus phase velocity index
+
+"""
 ws = np.array([eigs[ky-1]['w'] for ky in range(1,nky+1)])
 
-plt.figure()
-#plt.scatter(np.log(np.ravel(energies)), np.ravel(rsquared))
-plt.scatter(np.ravel(ws), np.ravel(rsquared))
-plt.axvline(uymin)
+fig = plt.figure()
+
+ax = plt.subplot(211)
+#plt.plot(np.ravel(rsquared)[uphinds], marker='.', ls='')
+for ky in range(1,len(eigs)+1):
+    plt.scatter(np.ravel(ws[ky-1,:]), np.ravel(rsquared[ky-1,:]))
+
+ax2 = plt.subplot(212, sharex=ax)
+xplot = np.linspace(-np.pi, np.pi, endpoint=False, num=2048)
+ax2.plot(eigsolver.uy, xplot)
+#plt.axvline(uymin)
+"""
 
 # %% Frequency plots
     
@@ -402,12 +435,13 @@ plt.axis('square')
 
 # %%
 
+"""
 plt.figure()
 betadivs = np.geomspace(0.06, 0.08, num=2048)
 freqdevs = list(map(l1_dev, - betadivs))
 plt.semilogx(betadivs, freqdevs)
 plt.semilogx(betadivs, 3*betadivs)
-
+"""
 
 # %%
 
@@ -420,8 +454,92 @@ psiv = np.fft.irfft(psivfft, axis=1)
 plt.figure()
 plt.imshow(psiv, origin='lower')
 """
-# %%
 
-eig = 4
+# %% Plot of vph vs. eigenfunction index
+
+"""
+ky = 2
 plt.figure()
-plt.plot(np.real(eigs[0]['vpsi'][:,eig]))
+plt.scatter(range(2048), np.average(np.abs(eigamps[ky-1,:,:])**2, axis=0)/np.sqrt(ky))
+plt.yscale('log')
+"""
+
+# %% Eigenfunction plots
+
+eig = 5
+ky = 3
+fig = plt.figure()
+ax = plt.subplot(211)
+ax.plot(np.real(eigs[ky-1]['vpsi'][:,eig]))
+axt = ax.twinx()
+axt.plot(eigsolver.uy, c='tab:orange')
+
+ax2 = plt.subplot(212)
+ax2.plot(np.real(eigamps[ky-1,:,eig]), c='tab:blue')
+ax2.plot(np.imag(eigamps[ky-1,:,eig]), c='tab:blue', ls='--')
+
+# %% Plot to check if the eigencomponent frequency varies with the amplitude
+
+"""
+i = 18
+
+eig = inds[i] % 2048
+ky = inds[i] // 2048 + 1
+freqs = np.diff(np.unwrap(np.angle(eigamps[ky-1,:,eig])))/dt
+amps = np.abs(eigamps[ky-1,:,eig])**2
+
+kx = np.argmax(np.abs(np.fft.rfft(np.real(eigs[ky-1]['vl'][:,eig]))))
+dispersion = -8.0 * ky / (kx**2 + ky**2)
+
+plt.figure()
+plt.scatter(amps[:-1]+amps[1:], freqs)
+plt.axhline(dispersion, ls='--', c='tab:red')
+plt.axhline(np.real(eigs[ky-1]['w'][eig])*ky, ls='--', c='tab:orange')
+"""
+
+# %% Plot to check the amplitude and coherence of eigenfunctions
+
+fig = plt.figure()
+
+ax = plt.subplot(321)
+axa = plt.subplot(322)
+for ky in range(1,len(eigs)+1):
+    ax.scatter(eigs[ky-1]['w'], np.average(np.abs(eigamps[ky-1,:,:])**2, axis=0)/np.sqrt(ky))
+    axa.scatter(np.arange(2048), np.average(np.abs(eigamps[ky-1,:,:])**2, axis=0)/np.sqrt(ky))
+ax.set_yscale('log')
+axa.set_yscale('log')
+
+ax2 = plt.subplot(323, sharex=ax)
+ax2a = plt.subplot(324, sharex=axa)
+for ky in range(1,len(eigs)+1):
+    ax2.scatter(eigs[ky-1]['w'], np.ravel(rsquared[ky-1,:]))
+    ax2a.scatter(np.arange(2048), np.ravel(rsquared[ky-1,:]))
+ax2.axhline(0.5, c='k', ls='--')
+ax2.axhline(0.9, c='k', ls='--')
+ax2a.axhline(0.5, c='k', ls='--')
+ax2a.axhline(0.9, c='k', ls='--')
+
+ax3 = plt.subplot(325, sharex=ax)
+ax3a = plt.subplot(326, sharex=ax)
+#ax3a = plt.subplot(326)
+xplot = np.linspace(-np.pi, np.pi, endpoint=False, num=2048)
+ax3.plot(eigsolver.uy, xplot)
+for ky in range(1,len(eigs)+1):
+    #ax3a.scatter(eigs[ky-1]['w'], np.ravel(rsquared[ky-1,:])*np.average(np.abs(eigamps[ky-1,:,:])**2, axis=0)/np.sqrt(ky))
+    #ax3a.scatter(np.imag(dmdfreqs[ky-1,:])/ky, np.ravel(rsquared[ky-1,:])*np.average(np.abs(eigamps[ky-1,:,:])**2, axis=0)/np.sqrt(ky))
+    ax3a.scatter(np.imag(dmdfreqs[ky-1,:])/ky, np.ravel(rsquared[ky-1,:]))
+    pass
+#ax3a.set_yscale('log')
+
+# %% Plot of DMD freq vs. eigenfrequency
+    
+plt.figure()
+for ky in range(1,len(eigs)+1):
+    plt.scatter(np.imag(dmdfreqs[ky-1,:])/ky, eigs[ky-1]['w'])
+plt.axis('equal')
+
+# %% Plot of the x dependence of the modes
+
+ky = 3
+plt.figure()
+plt.imshow(np.clip(eigs[ky-1]['vh'], -np.sqrt(1/1024), np.sqrt(1/1024)), cmap='PiYG')

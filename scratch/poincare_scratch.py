@@ -37,7 +37,7 @@ mpl.rc('mathtext', fontset='cm')
 # %% 
 
 case = 2
-basedata = np.load('../poincare_input/case{}_poincare_config_fd_smooth_coherent.npz'.format(case))
+basedata = np.load('../poincare_input/case{}_poincare_config_fd_smooth_uphavg.npz'.format(case))
 qbar = basedata['qbar']
 uy = basedata['uy']
 
@@ -81,7 +81,7 @@ tab10 = mpl.cm.get_cmap('tab10')
 #ax[1].scatter(uyf(x), x, c=np.mod(np.angle(uyf(x) + 1j*hilbuyf(x))*3,2*np.pi), cmap='twilight', marker='.')
 #ax[1].set_ylim([-np.pi, np.pi])
 
-suffix = 'amp100_energymin'
+suffix = 'amp100_uphavg'
 data = np.load('../sections/case{}_section_{}.npz'.format(case,suffix))
 
 z0 = data['y'][:,0]
@@ -203,7 +203,8 @@ ax.scatter(yclip[nparticles::stride,::stride2], yclip[:nparticles:stride,::strid
 
 fig, ax = plt.subplots(1, 1, figsize=(3.0, 10.0))
 #ax.scatter(xstd, xavg)
-ax.scatter(stdresid, xavg, c=colors[:,0], cmap='Spectral', vmin=-np.max(np.abs(colors)), vmax=np.max(np.abs(colors)))
+#ax.scatter(stdresid, xavg, c=colors[:,0], cmap='Spectral', vmin=-np.max(np.abs(colors)), vmax=np.max(np.abs(colors)))
+ax.scatter(stdresid, xavg, c=rotcolors[:,0], cmap='brg')
 ax.set_ylim([-np.pi, np.pi])
 plt.tight_layout()
 # %%

@@ -7,21 +7,26 @@ Created on Wed Jan 26 16:42:20 2022
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import h5py
 
 import sys
 import os
 
 sys.path.append(os.path.abspath('../qg_dns/analysis/eigenvectors'))
-from chm_utils import EigenvalueSolverFD, EigenvalueSolverFDNonSym, calcPixelEquivLatitude
+from chm_utils import EigenvalueSolver, EigenvalueSolverFD, EigenvalueSolverFDNonSym, calcPixelEquivLatitude
 
 # %% Load data
+
+case = 2
 
 nx = 2048
 x = np.linspace(-np.pi, np.pi, num=nx, endpoint=False)
 
-simdata = h5py.File('../dns_input/case1/snapshots_s2.h5', 'r')
-q = simdata['tasks/q'][0,:,:]
+simdata = h5py.File('../dns_input/case{}/snapshots_s{}.h5'.format(case, 3-case), 'r')
+
+qbars = np.load('../dns_input/case{}/qbars.npz'.format(case))
+
 
 # %% Plot zonal q
 
@@ -29,77 +34,83 @@ plt.figure()
 for j in range(1):
     plt.plot(np.gradient(np.average(simdata['tasks/q'][j,:,:], axis=1) + 8*x))
 
-# %% Compute qbar
-
-qbar = calcPixelEquivLatitude(q, x)
-
-smoother = np.exp(-96*(x+np.pi)) + np.exp(-96*(np.pi-x))
-smoother = smoother / np.sum(smoother)
-
-qbar_smooth = np.fft.irfft(np.fft.rfft(qbar)*np.fft.rfft(smoother))
-
-qbar_smooth = np.average(simdata['tasks/q'][0,:,:], axis=1)
+qbar = qbars['qbar'][0,:]
 
 # %% Compute eigenfunctions
 
-# eigsolver = EigenvalueSolverFD(qbar_smooth)
-eigsolver = EigenvalueSolverFDNonSym(qbar_smooth)
-
-nky = 4
-rangeky = range(1,1+nky)
-eigs = [None]*nky
+ky = 3
+nt = simdata['tasks/q'].shape[0]
+eigs = [None]*nt
 
 print("Solving for eigenfunctions")
-for ky in rangeky:
-    print(ky)
-    #eigs[ky-1] = eigsolver.solveEigenfunctions(ky=ky, norm='action')
-    eigs[ky-1] = eigsolver.solveEigenfunctions(ky=ky)
+for i in range(nt):
+    print(i)
+    eigsolver = EigenvalueSolver(qbars['qbar'][i,:])
+    eigs[i] = eigsolver.solveEigenfunctions(ky=ky, damping=True)
+
     
 # %% Plot eigenvalues
-
-ky = 3
-plt.scatter(np.real(eigs[ky-1]['w']), np.imag(eigs[ky-1]['w']))
-    
-# %% Radial plot
-
-pod_re = np.load('../dns_input/case1/raw_podmode005.npy')
-pod_im = np.load('../dns_input/case1/raw_podmode006.npy')
-
-plt.imshow(pod_im)
-
-pod_timetraces = np.load('../dns_input/case1/pod_timetraces.npz')['arr_0']
-
-# %% 
-
-#pod_fft = np.fft.fft(pod_re-1j*pod_im, axis=1)
-#pod_radial_raw = pod_fft[:,-1]
-#pod_radial = np.real(pod_radial_raw / np.fft.fft(pod_radial_raw)[1])
-
-rank = 1
-ind = np.argpartition(np.imag(eigs[ky-1]['w']), -rank)[-rank]
-
-#ind = 1
-eigplot = eigs[ky-1]['vr'][:,ind]
+cmap = mpl.cm.get_cmap('viridis')
 
 fig = plt.figure()
-ax = fig.add_subplot(111)
-ax2 = ax.twinx()
-ax2.plot(eigsolver.uy, c='tab:blue')
-ax.plot(np.real(eigplot), c='tab:orange')
-ax.plot(np.imag(eigplot), c='tab:orange', ls='--')
-#ax.plot(np.real(eigplot2), c='tab:orange')
-#ax.plot(np.imag(eigplot2), c='tab:orange', ls='--')
+ax = fig.add_subplot(211)
+ax2 = fig.add_subplot(212, sharex=ax)
+
+ax.plot(eigsolver.uy, range(nx))
+ax.scatter(eigsolver.uy[eigsolver.b>8], np.arange(nx)[eigsolver.b>8], marker='x', c='tab:orange')
+
+ax2.axhline(0, c='k', ls='--')
+for i in range(nt):
+    ax2.scatter(np.real(eigs[i]['w']), np.imag(eigs[i]['w']), color=cmap(i/nt))
+    
+ax2.set_ylim([-2*np.pi, 0.2*np.pi])
+
+# %% Get eigenvalue amps
+eigamps = np.zeros((2048, nt), dtype=complex)
+for i in range(nt):
+    q = simdata['tasks/q'][i,:,:]
+    qffty = np.fft.rfft(q, axis=1)
+    eigamps[:,i] = np.conj(eigs[i]['vl']).T @ qffty[:,ky]
+
+# %% Sort eigenvalues and get amplitudes
+
+eigsorts = [None]*nt
+
+for i in range(nt):
+    #eigsorts[i] = np.argsort(-np.abs(eigamps[:,i]))
+    eigsorts[i] = np.argsort(np.real(eigs[i]['w']))
+    #eigsorts[i] = np.argsort(-np.imag(eigs[i]['w']))
+
+# %% How well are the eigenvectors preserved?
+
+toplot = np.abs(np.conj((eigs[0]['vl'][:,eigsorts[0]]).T) @ eigs[1]['vr'][:,eigsorts[1]])
+
+maxrow = np.argmax(toplot, axis=0)
 
 
-#plt.plot(-pod_radial / np.sqrt(np.sum(pod_radial**2)))
-
+plt.figure()
+plt.imshow(np.clip(toplot, 0, 1), origin='lower')
+plt.colorbar()
 
 # %%
 
-t = np.linspace(0, 64, num=256, endpoint=False)
-#plt.plot(pod_timetraces[:,1])
-ph0 = np.unwrap(np.angle(pod_timetraces[:,3] + 1j * pod_timetraces[:,4]))
-plt.plot(ph0)
+plt.figure()
+plt.imshow(np.clip(np.abs(eigs[0]['vpsi'][:,eigsorts[0]]), 0, 0.01))
 
-fit = np.polynomial.polynomial.Polynomial.fit(np.linspace(0, 64, num=256, endpoint=False), ph0, deg=1).convert()
-om0 = fit.coef[1]
+  
+# %% Radial plot
+
+ind = 0
+eig = eigsorts[ind][38]
+
+fig = plt.figure()
+ax = fig.add_subplot(211)
+ax.plot(np.real(eigs[ind]['vpsi'][:,eig]), c='tab:blue')
+ax.plot(np.imag(eigs[ind]['vpsi'][:,eig]), c='tab:blue', ls='--')
+
+axt = ax.twinx()
+axt.plot(eigsolver.uy, c='tab:orange')
+
+ax2 = fig.add_subplot(212)
+ax2.plot(np.real(eigamps[eig,:]), c='tab:blue')
+ax2.plot(np.imag(eigamps[eig,:]), c='tab:blue', ls='--')

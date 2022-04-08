@@ -21,7 +21,7 @@ class EigenvalueSolver:
         # FFT * I
         fc = np.fft.rfft(ec, axis=0)
         # Refinement * FFT * I
-        rfc = np.zeros((nx*3//4+1, nx), dtype=np.complex)
+        rfc = np.zeros((nx*3//4+1, nx), dtype=complex)
         rfc[:nx//2+1,:] = fc*1.5
         # IFFT * Refinement * FFT * I
         refine = np.fft.irfft(rfc, axis=0)
@@ -31,7 +31,7 @@ class EigenvalueSolver:
         # FFT * I
         fr = np.fft.rfft(er, axis=0)
         # Coarsening * FFT * I
-        cfr = np.zeros((nx//2+1, nx*3//2), dtype=np.complex)
+        cfr = np.zeros((nx//2+1, nx*3//2), dtype=complex)
         cfr[:,:] = fr[:nx//2+1,:]/1.5
         # IFFT * Coarsening * FFT * I
         coarsen = np.fft.irfft(cfr, axis=0)
@@ -51,7 +51,7 @@ class EigenvalueSolver:
         # WARNING! My sign conventions are a bit screwy here because I started in
         # plasma physics units conventions, but switched halfway to using GFD conventions
         # In particular, uy here "actually" means ux!!
-        kxinv = np.zeros(kx.shape, dtype=np.complex)
+        kxinv = np.zeros(kx.shape, dtype=complex)
         kxinv[kx>0] = 1.0/(-1j*kx[kx>0])
         uy = np.fft.irfft(np.fft.rfft(qbar)*kxinv)
         uypp = np.fft.irfft(-1j*kx*np.fft.rfft(qbar))

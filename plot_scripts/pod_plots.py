@@ -112,5 +112,5 @@ for i in range(len(cases)):
 plt.tight_layout(h_pad=0.0, w_pad=0.0)
 plt.tight_layout(h_pad=0.0, w_pad=0.0)
 
-plt.savefig('pod_plots.pdf', dpi=300)
-plt.savefig('pod_plots.png', dpi=300)
+plt.savefig('pod_plots.pdf', dpi=1200)
+plt.savefig('pod_plots.png', dpi=1200)
