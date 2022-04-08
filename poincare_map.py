@@ -44,8 +44,14 @@ class PoincareMapper:
         x = np.linspace(-np.pi,np.pi, num=nx, endpoint=False)
 
 
-        utildey = np.fft.irfft(-1j*kx[np.newaxis,:]*np.fft.rfft(psiv, axis=1), axis=1)
-        qtilde = np.fft.irfft(-(kx[np.newaxis,:]**2 + kys[:,np.newaxis]**2)*np.fft.rfft(psiv, axis=1), axis=1)
+        #utildey = np.fft.irfft(-1j*kx[np.newaxis,:]*np.fft.rfft(psiv, axis=1), axis=1)
+        #qtilde = np.fft.irfft(-(kx[np.newaxis,:]**2 + kys[:,np.newaxis]**2)*np.fft.rfft(psiv, axis=1), axis=1)
+
+        psiv1 = np.roll(psiv, 1, axis=1)
+        psiv2 = np.roll(psiv, -1, axis=1)
+
+        utildey = (psiv1 - psiv2) / (2 * np.pi / nx * 2)
+        qtilde = (psiv1 + psiv2 - 2*psiv) / (2 * np.pi / nx)**2 - kys[:,np.newaxis]**2 * psiv
 
         # Set up interpolation functions
         pad = 4
@@ -60,7 +66,7 @@ class PoincareMapper:
             vecp[:pad] = vec[-pad:]
             vecp[-pad:] = vec[:pad]
 
-            return scipy.interpolate.interp1d(xp, vecp, kind='quadratic')
+            return scipy.interpolate.interp1d(xp, vecp, kind='cubic')
 
         psif = [circularInterpolant(psiv[i,:]) for i in range(numeigs)]
         utyf = [circularInterpolant(utildey[i,:]) for i in range(numeigs)]
@@ -216,14 +222,14 @@ class PoincareMapper:
         zxpad[:pad] = z[nparticles-pad:nparticles]
         zxpad[-pad:] = z[:pad]
 
-        zxf = scipy.interpolate.interp1d(arclength_pad, zxpad, kind='quadratic')
+        zxf = scipy.interpolate.interp1d(arclength_pad, zxpad, kind='cubic')
 
         zypad = np.zeros(len(arclength_param)+2*pad)
         zypad[pad:-pad] = z[nparticles:]
         zypad[:pad] = z[-pad:] - 2*np.pi
         zypad[-pad:] = z[nparticles:nparticles+pad] + 2*np.pi
 
-        zyf = scipy.interpolate.interp1d(arclength_pad, zypad, kind='quadratic')
+        zyf = scipy.interpolate.interp1d(arclength_pad, zypad, kind='cubic')
 
         num_newsamples = int(arclength/2/np.pi*2048*1.5 + 0.5)
         resampling = np.linspace(0, arclength, num=num_newsamples, endpoint=False)
@@ -335,43 +341,32 @@ class PoincareMapper:
         amps_mod = amps * ampmult
         phases_mod = phases + phaseoffs
 
-        # Compute desried contour
+        # Compute the x-value of minimum perturbation to the q contours
         qts = np.array(list((qtf[i](x)[:,np.newaxis])*(np.cos(kys[i]*x - phases_mod[i])[np.newaxis,:])*amps_mod[i] for i in range(numeigs)))
-        qplot = (qbar*zonalmult + 8*x)[:,np.newaxis] + np.sum(qts, axis=0)
+        qtilde = np.sum(qts, axis=0)
+        qtildeamp = np.sum(qtilde**2, axis=0)
+        qminampind = np.argmin(qtildeamp)
 
+        # Use this q to place the points
+        qtest = qbar*zonalmult + 8*x + qtilde[:,qminampind]
+
+        # Set up x points which are the "ideal" samples
         qbarf = self.qbarf
-
         xsamples = np.linspace(-np.pi, np.pi, num=nparticles, endpoint=False)
         qsamples = qbarf(xsamples) + 8*xsamples
 
-        z0 = np.ones(nparticles*2) * 8000.0
+        # Pick out the x points which are perturbed by the q contours
+        qtest2 = np.sort(np.concatenate((qtest-8*2*np.pi, qtest, qtest+8*2*np.pi)))
+        x2 = np.concatenate((x-2*np.pi, x, x+2*np.pi))
+        xfunc = scipy.interpolate.interp1d(qtest2, x2)
 
-        for i in range(nparticles):
-            qcont = qsamples[i]
+        # Note: these are plasma physics conventions
+        x0 = xfunc(qsamples)
+        y0 = np.ones(nparticles)*x[qminampind]
 
-            if xsamples[i] < -3*np.pi/4:
-                contours1 = measure.find_contours(qplot, qcont)
-                contours2 = measure.find_contours(qplot, qcont+2*8*np.pi)
-                contours = contours1 + contours2
-            elif xsamples[i] > 3*np.pi/4:
-                contours1 = measure.find_contours(qplot, qcont)
-                contours2 = measure.find_contours(qplot, qcont-2*8*np.pi)
-                contours = contours1 + contours2
-            else:
-                contours = measure.find_contours(qplot, qcont)
-
-            #print("{} - {} contours".format(qcont, len(contours)))
-            for c in contours:
-                # Ignore contours which begin and end on the same side
-                if np.abs(c[0,1] - c[-1,1]) < 1.0:
-                    continue
-
-                c2 = (2*np.pi*c/2048) - np.pi
-
-                ymin = np.argmin(c2[:,1])
-                if c2[ymin,1] < z0[nparticles+i]:
-                    z0[i] = c2[ymin,0]
-                    z0[nparticles+i] = c2[ymin,1]
+        z0 = np.zeros(nparticles*2)
+        z0[:nparticles] = x0
+        z0[nparticles:] = y0
 
         return z0
 

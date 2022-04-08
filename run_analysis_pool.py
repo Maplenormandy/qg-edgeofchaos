@@ -81,7 +81,7 @@ def saveSection(inputdata):
     #phaseofs = timedata['phasedevs'][:,ind]
 
 
-    pm.generateFullSection(ampmult, phaseofs, '/data/nc1472/qg-edgeofchaos/extra_poincare_sections/case{}_section_ind{:03d}{}.npz'.format(case, ind, suffix), nparticles=521, sections=521, fancyspacing=True)
+    pm.generateFullSection(ampmult, phaseofs, '/data/nc1472/qg-edgeofchaos/extra_poincare_sections/case{}_section_ind{:03d}{}.npz'.format(case, ind, suffix), nparticles=193, sections=2039, fancyspacing=True)
     data = np.load('/data/nc1472/qg-edgeofchaos/extra_poincare_sections/case{}_section_ind{:03d}{}.npz'.format(case, ind, suffix), 'r')
 
     z0 = data['y'][:,0]
@@ -170,7 +170,7 @@ if __name__ == '__main__':
         allargs = zip(cases, inds, ampmults, phasedevs)
 
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=16) as executor:
         results = executor.map(saveSection, allargs)
 
         for result in results:

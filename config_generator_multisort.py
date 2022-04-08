@@ -17,9 +17,11 @@ sys.path.append(os.path.abspath('qg_dns/analysis/eigenvectors'))
 from chm_utils import EigenvalueSolverFD
 
 # %% Load data
-
-case = 1
-ampfile = np.load('dns_input/case{}/eigencomps_fd_smooth.npz'.format(case))
+if len(sys.argv) > 1:
+    case = int(sys.argv[1])
+else:
+    case = 1
+ampfile = np.load('dns_input/case{}/eigencomps_fd_qbar.npz'.format(case))
 eigamps = ampfile['amps']
 qbar = ampfile['qbar']
 suffix = '_uphavg'
@@ -43,7 +45,7 @@ for ky in range(1,nky+1):
 
 # %% Compute the coherence of the eigenfunctions
 
-numofs = 1
+numofs = 64
 rsqt = np.zeros((eigamps.shape[0], numofs, eigamps.shape[2]))
 
 for i in range(numofs):
@@ -92,15 +94,24 @@ inds = uphinds
 
 if case == 1:
     #numeigs = 8
-    numeigs = 5
+    eigstoadd = np.arange(5, dtype=int)
+    numeigs = len(eigstoadd)
 else:
     #numeigs = 36
     #numeigs = 9
     numeigs = 22
+    eigstoadd = np.arange(22, dtype=int)
+
+    rsquared_abovethreshold = np.ravel(rsquaredall)[inds[eigstoadd]] > 0.4
+
+    eigstoadd = eigstoadd[rsquared_abovethreshold]
+
+    numeigs = len(eigstoadd)
 
 # This is the info that we need filled out
 
 print("Number of eigenfunctions: ", numeigs)
+print(eigstoadd)
 
 psiv = np.zeros((numeigs, 2048))
 amps = np.zeros(numeigs)
@@ -133,8 +144,8 @@ t = np.linspace(0, 64, num=numsnaps, endpoint=True)
 
 
 for i in range(numeigs):
-    eig = inds[i] % 2048
-    ky = inds[i] // 2048 + 1
+    eig = inds[eigstoadd[i]] % 2048
+    ky = inds[eigstoadd[i]] // 2048 + 1
 
     kys[i] = ky
     eignums[i] = eig
@@ -166,9 +177,10 @@ for i in range(numeigs):
     eigfreqs[i] = eigs[ky-1]['w'][eig]*ky
 
 # Set doppler shift
-ind_dop = np.where(inds==energyinds[0])[0][0]
-
+ind_dop = np.argmax(np.average(eigenergies, axis=1))
 ky_dop = kys[ind_dop]
+
+print("doppler mode ky={} eignum={}".format(ky_dop, eignums[ind_dop]))
 dopplerc = expfreqs[ind_dop] / ky_dop
 #dopplerc = 0
 
