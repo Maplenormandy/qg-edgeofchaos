@@ -520,16 +520,17 @@ ax2a.axhline(0.5, c='k', ls='--')
 ax2a.axhline(0.9, c='k', ls='--')
 
 ax3 = plt.subplot(325, sharex=ax)
-ax3a = plt.subplot(326, sharex=ax)
-#ax3a = plt.subplot(326)
+#ax3a = plt.subplot(326, sharex=ax)
+ax3a = plt.subplot(326)
 xplot = np.linspace(-np.pi, np.pi, endpoint=False, num=2048)
 ax3.plot(eigsolver.uy, xplot)
 for ky in range(1,len(eigs)+1):
     #ax3a.scatter(eigs[ky-1]['w'], np.ravel(rsquared[ky-1,:])*np.average(np.abs(eigamps[ky-1,:,:])**2, axis=0)/np.sqrt(ky))
     #ax3a.scatter(np.imag(dmdfreqs[ky-1,:])/ky, np.ravel(rsquared[ky-1,:])*np.average(np.abs(eigamps[ky-1,:,:])**2, axis=0)/np.sqrt(ky))
-    ax3a.scatter(np.imag(dmdfreqs[ky-1,:])/ky, np.ravel(rsquared[ky-1,:]))
+    #ax3a.scatter(np.imag(dmdfreqs[ky-1,:])/ky, np.ravel(rsquared[ky-1,:]))
+    ax3a.scatter(np.average(np.abs(eigamps[ky-1,:,:])**2, axis=0)/np.sqrt(ky), np.ravel(rsquared[ky-1]))
     pass
-#ax3a.set_yscale('log')
+ax3a.set_xscale('log')
 
 # %% Plot of DMD freq vs. eigenfrequency
     

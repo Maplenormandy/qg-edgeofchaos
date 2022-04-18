@@ -44,7 +44,7 @@ from numpy.polynomial import Polynomial
 
 # %% Solve for eigenfunctions
 
-ampfile1 = np.load('../dns_input/case1/eigencomps_fd_smooth.npz')
+ampfile1 = np.load('../dns_input/case1/eigencomps_fd_qbar.npz')
 eigamps1 = ampfile1['amps']
 qbar1 = ampfile1['qbar']
 podsvals1 = np.loadtxt('../dns_input/case1/podsvals.txt')
@@ -65,7 +65,7 @@ for ky in range(1,nky+1):
         eigs1[ky-1] = eigsolver.solveEigenfunctions(ky=ky, norm='action')
     
 
-ampfile2 = np.load('../dns_input/case2/eigencomps_fd_smooth.npz')
+ampfile2 = np.load('../dns_input/case2/eigencomps_fd_qbar.npz')
 eigamps2 = ampfile2['amps']
 qbar2 = ampfile2['qbar']
 podsvals2 = np.loadtxt('../dns_input/case2/podsvals.txt')
@@ -259,8 +259,10 @@ for i in range(2):
     psi_zf = np.average(pod_zf, axis=1)*zf_amp
     q_zf = np.fft.irfft(-np.fft.rfft(psi_zf)*kx**2)
     
-    axi1.plot(x, q_zf, lw=0.8)
-    axi1.plot(x, qbar, lw=0.8, ls='--')
+    #axi1.plot(x, q_zf, lw=0.8)
+    #axi1.plot(x, qbar, lw=0.8, ls='--')
+    
+    axi1.plot(x, qbar, lw=0.8)
     
     axi0.text(0.03, 0.95, r'$\tilde{q}$', transform=axi0.transAxes, ha='left', va='top')
     axi1.text(0.03, 0.95, r'$\bar{q}$', transform=axi1.transAxes, ha='left', va='top')

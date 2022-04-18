@@ -80,9 +80,7 @@ for i in range(len(cases)):
         ax0 = fig.add_subplot(gs[0, j])
         poddata = np.load('../dns_input/{}/raw_podmode{}.npy'.format(cases[i], suffixes[j]))
         
-        ax0.imshow(np.fliplr(poddata), origin='lower')
-        ax0.set_xticks([])
-        ax0.set_yticks([])
+        ax0.imshow(np.fliplr(poddata), origin='lower', extent=(-np.pi,np.pi, -np.pi,np.pi))
         
         if ax_share == None:
             ax1 = fig.add_subplot(gs[1, j])
@@ -95,22 +93,27 @@ for i in range(len(cases)):
         ax1.set_ylim([-0.18,0.18])
         
         ax0.text(0.5, 1.0, 'Mode {}'.format(int(suffixes[j])), ha='center', va='bottom', transform=ax0.transAxes)
+        
+        ax0.set_xticks([-2,0,2])
             
         if j == 0:
             ax1.text(0.03, 0.95, '$a(t)$', transform=ax1.transAxes, ha='left', va='top')
             ax0.set_title('(b)', loc='left')
-            ax0.set_ylabel('$y$')
+            #ax0.set_xlabel('$x$')
+            #ax0.set_ylabel('$y$')
             ax0.text(0.03, 0.97, r'$\psi(x,y)$', transform=ax0.transAxes, ha='left', va='top')
+            #ax0.text(-0.03, 0.97, r'$y$', transform=ax0.transAxes, ha='right', va='top')
+            #ax0.text(0.97, -0.03, r'$x$', transform=ax0.transAxes, ha='right', va='top')
+            ax1.set_xlabel('$t$')
+            
         else:
             ax1.set_yticks([])
-        
-        if j == 1:
-            ax1.set_xlabel('$t$')
-            ax0.set_xlabel('$x$')
+            ax0.set_xticklabels([])
+            ax0.set_yticklabels([])
 
 
-plt.tight_layout(h_pad=0.0, w_pad=0.0)
-plt.tight_layout(h_pad=0.0, w_pad=0.0)
+plt.tight_layout(h_pad=0.12, w_pad=0.0)
+plt.tight_layout(h_pad=0.12, w_pad=0.0)
 
-plt.savefig('pod_plots.pdf', dpi=1200)
-plt.savefig('pod_plots.png', dpi=1200)
+plt.savefig('pod_plots.pdf', dpi=600)
+plt.savefig('pod_plots.png', dpi=600)

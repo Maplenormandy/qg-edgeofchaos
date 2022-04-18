@@ -57,6 +57,14 @@ kx = np.fft.rfftfreq(nx, 1.0/nx)
 kxinv = np.zeros(kx.shape, dtype=complex)
 kxinv[kx>0] = 1.0/(-1j*kx[kx>0])
 
+
+def recenter(z):
+    z2 = np.zeros(z.shape[0]+1)
+    z2[1:-1] = (z[1:] + z[:-1]) / 2.0
+    z2[0] = 2*z[0] - z[1]
+    z2[-1] = 2*z[-1] - z[-2]
+    return z2
+
 def poincarePlot(ax, pdata, colordata):
     z0 = pdata['y'][:,0]
     yclip = pdata['yclip']
@@ -84,16 +92,17 @@ def poincarePlot(ax, pdata, colordata):
 
 # %% Plot figure
 
-fig = plt.figure(figsize=(17.8/2.54, 0.25*17.8/2.54), dpi=300)
-gs = fig.add_gridspec(1, 4, width_ratios=[2,2,2,2])
-
 
 for case in [1,2]:
+    
+    fig = plt.figure(figsize=(8.7/2.54, 8.7/2.54), dpi=300)   
+    gs = fig.add_gridspec(2, 2)
+    
     cdata = np.load('case{}_snapcontours.npz'.format(case))
     mdata = np.load('../poincare_analysis/case{}_mixing_lengths.npz'.format(case))
     qbars = np.load('../dns_input/case{}/qbars.npz'.format(case))
 
-    ### Load and plot PV data ###
+    ### Load the PV data ###
     snapind = 51 if (case == 1) else 192
     snapfilenum = (snapind//16+2) if (case == 1) else (snapind//10+1)
     simdata = h5py.File('../dns_input/case{}/snapshots_s{}.h5'.format(case, snapfilenum), 'r')
@@ -103,30 +112,22 @@ for case in [1,2]:
     
     lenq = circularInterpolant(cdata['levels'], np.average(cdata['lenmaxcontour'], axis=0), 2*8*np.pi, 500)
     
-    axq = fig.add_subplot(gs[2*case-1])
-    #axq.set_xticks([])
-    #axq.set_yticks([])
     
-
-    #axq.set_title('$\ell(q(x,y,t))$')
-    
-    
-    ### Plot the poincare plots max amplitude ###
+    ### Plot the poincare sections ###
     pdata = np.load('../extra_poincare_sections/case{}_section_ind{:03d}_uphavg.npz'.format(case,snapind))
-    axp1 = fig.add_subplot(gs[2*case-2])
+    axp1 = fig.add_subplot(gs[0,0])
     
     poincarePlot(axp1, pdata, mdata['allcorrdims'][:,snapind])
-    
-    if (case == 1):
-        #axp1.text(0.0, 1.05, 'Case 1', transform=axp1.transAxes, ha='left', va='bottom')
-        axp1.set_title('Case 1', loc='left')
-        axp1.set_xlabel('$x$')
-        axp1.set_ylabel('$y$')
-    else:
-        #axp1.text(0.0, 1.05, 'Case 2', transform=axp1.transAxes, ha='left', va='bottom')
-        axp1.set_title('Case 2', loc='left')
-        axp1.set_yticklabels([])
         
+    snapind2 = 249 if (case == 1) else 32
+    pdata = np.load('../extra_poincare_sections/case{}_section_ind{:03d}_uphavg.npz'.format(case,snapind2))
+    axp2 = fig.add_subplot(gs[1,0])
+    
+    poincarePlot(axp2, pdata, mdata['allcorrdims'][:,snapind2])
+    
+    
+    ### Plot of the q contours ###
+    axq = fig.add_subplot(gs[0,1])
     im = axq.imshow(np.fliplr(lenq(q+8*x[:,np.newaxis])), origin='lower', cmap='viridis', extent=(-np.pi, np.pi, -np.pi, np.pi))
     divider = make_axes_locatable(axq)
     cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -137,9 +138,57 @@ for case in [1,2]:
     axq.set_yticklabels([])
     
     
+    ### Chaotic fraction vs. space ###
+    gsinner = gs[1,1].subgridspec(2,1)
     
-plt.tight_layout(h_pad=0.0, w_pad=0.0)
-plt.tight_layout(h_pad=0.0, w_pad=0.0)
+    axm = fig.add_subplot(gsinner[0])
+    
+    qbar = np.average(qbars['qbar'], axis=0)
+    dqbar = np.gradient(qbar) / np.gradient(x) + 8
+    
+    xsort = np.argsort(np.ravel(mdata['allxavgs']))
+    xorbit = np.average(np.reshape(np.ravel(mdata['allxavgs'])[xsort], mdata['allxavgs'].shape), axis=1)
+    chfraction = np.average(np.reshape(np.ravel(mdata['allcorrdims'])[xsort]>1.5, mdata['allxavgs'].shape), axis=1)
+    
+    kuofraction = np.average((np.gradient(qbars['qbar'], axis=1) / (2*np.pi/nx))+8 < 0, axis=0)
+    
+    # Plot of mixing
+    axt = axm.twinx()
+    
+    axm.fill_between(xorbit, chfraction, color='tab:orange', fc=mpl.cm.tab20(0.175), lw=0)
+    axm.plot(xorbit, chfraction, c='tab:orange')
+    axt.plot(x, dqbar, c='tab:blue')
+    
+    axm.set_ylim([0.0, 1.0])
+    if (case==1):
+        axt.set_ylim([0.0, 40.0])
+    else:
+        axt.set_ylim([0.0, 30.0])
+    
+    ### Chaotic fraction vs space-time ###
+    axf = fig.add_subplot(gsinner[1])
+    
+    xsort = np.argsort(mdata['allxavgs'], axis=0)
+    xplot = np.take_along_axis(mdata['allxavgs'], xsort, axis=0)
+    corrplot = np.take_along_axis(mdata['allcorrdims'], xsort, axis=0)
+    trange = np.arange(0, 64.1, 0.25)
+    trange2 = np.arange(-0.125, 64.0 + 0.125 + 0.01, 0.25)
+   
+    for i in range(len(trange)):
+        xplot2 = recenter(xplot[:,i])
+        tplot2 = np.array([trange2[i], trange2[i+1]])
+        
+        tplot3, xplot3 = np.meshgrid(tplot2, xplot2)
+        
+        axf.pcolormesh(tplot3, xplot3, np.array([corrplot[:,i]]).T, vmin=1.0, vmax=2.0, shading='flat')
 
-plt.savefig('mixing_plot.pdf', dpi=900)
-plt.savefig('mixing_plot.png', dpi=900)
+    if (case==1):
+        axf.set_ylim([1.0, 3.0])
+    else:
+        axf.set_ylim([-1.3, -0.5])
+        
+    plt.tight_layout(h_pad=0.0, w_pad=0.0)
+    plt.tight_layout(h_pad=0.0, w_pad=0.0)
+
+    plt.savefig('newmixing_plot_{}.pdf'.format(case), dpi=900)
+    plt.savefig('newmixing_plot_{}.png'.format(case), dpi=900)

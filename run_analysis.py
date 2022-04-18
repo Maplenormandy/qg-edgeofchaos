@@ -7,6 +7,7 @@ Created on Thu Nov 11 10:40:57 2021
 
 import numpy as np
 from poincare_map import PoincareMapper
+import scipy.optimize
 
 # %% Set up Baseline Poincare Mapper
 
@@ -21,9 +22,11 @@ from poincare_map import PoincareMapper
 
 suffix = '_uphavg'
 #suffix = ''
-case = 2
+case = 1
 pm = PoincareMapper('poincare_input/case{}_poincare_config_fd_smooth{}.npz'.format(case, suffix))
 numeigs = len(pm.data['kys'])
+
+timedata = np.load('poincare_input/case{}_eigencomponent_timedata{}.npz'.format(case, suffix), 'r')
 
 
 # %% Generate some sections of breaking waves
@@ -33,6 +36,19 @@ pm.generateBreakingSection(np.ones(numeigs)*0.4, np.zeros(numeigs), pm.qmin, 8, 
 pm.generateBreakingSection(np.ones(numeigs)*1.0, np.zeros(numeigs), pm.qmin, 8, 'sections/case{}_breaking_amp100.npz'.format(case), resampling=True)
 pm.generateBreakingSection(np.ones(numeigs)*1.2, np.zeros(numeigs), pm.qmin, 8, 'sections/case{}_breaking_amp120.npz'.format(case), resampling=True)
 """
+
+timeind = 49
+ampmults = timedata['ampdevs'][:,timeind]
+phasedevs = timedata['phasedevs'][:,timeind]
+
+uyf = pm.funcs[3]
+qbarf = pm.qbarf
+
+uymaxx = scipy.optimize.minimize_scalar(lambda x: -uyf(x), bounds=(-np.pi, np.pi), method='bounded')
+qmax = qbarf(uymaxx.x) + 8*(uymaxx.x)
+
+pm.generateBreakingSection(ampmults, phasedevs, pm.qmin, 8, 'sections/case{}_breaking_qmin.npz'.format(case), resampling=True)
+pm.generateBreakingSection(ampmults, phasedevs, qmax, 8, 'sections/case{}_breaking_qmax.npz'.format(case), resampling=True)
 
 #pm.generateBreakingSection(np.sqrt(pm.data['rsquared'])*0.4, np.zeros(numeigs), pm.qmin, 8, 'sections/case{}_breaking_amp040.npz'.format(case), resampling=True)
 #pm.generateBreakingSection(np.sqrt(pm.data['rsquared'])*1.0, np.zeros(numeigs), pm.qmin, 8, 'sections/case{}_breaking_amp100.npz'.format(case), resampling=True)
@@ -235,7 +251,7 @@ np.savez('lyapunovs/lyaps_multicontour_longtimedependent_allmodes.npz', lyaps=ly
 # %% Poincare sections via amplitude of waves
 
 
-
+"""
 amprange = ['100']
 #amprange = ['100', '110']
 
@@ -250,7 +266,7 @@ for i in range(len(amprange)):
     
     #pm.generateFullSection(np.ones(numeigs)*m, np.zeros(numeigs), 'sections/case{}_section_amp{}{}.npz'.format(case,amprange[i], suffix), nparticles=193, sections=3109, fancyspacing=True)
     pm.generateFullSection(ampmult, np.zeros(numeigs), 'sections/case{}_section_amp{}{}.npz'.format(case,amprange[i], suffix), nparticles=521, sections=521, fancyspacing=True)
-
+"""
 
 
 """

@@ -34,9 +34,9 @@ mpl.rc('mathtext', fontset='cm')
 
 # %%
 
-case = 2
+case = 1
 cdata = np.load('case{}_snapcontours.npz'.format(case))
-data = np.load('../plot_scripts/case{}_mixing_lengths.npz'.format(case))
+data = np.load('../poincare_analysis/case{}_mixing_lengths.npz'.format(case))
 qbars = np.load('../dns_input/case{}/qbars.npz'.format(case))
 
 stdresids = data['allstdresids']
@@ -146,10 +146,55 @@ ax = plt.subplot(311)
 #axt.plot(zonalamps[2,:], c='tab:red')
 #axt.plot(np.max(ranresids, axis=0), c='tab:orange', marker='.')
 
-ax.plot(np.sum(data['allcorrdims']>1.5, axis=0)/127)
+ax.plot(np.average(data['allcorrdims']>1.5, axis=0))
 
 ax2 = plt.subplot(312)
-ax2.pcolormesh(data['allranresids'])
+
+xsort = np.argsort(data['allxavgs'], axis=0)
+xplot = np.take_along_axis(data['allxavgs'], xsort, axis=0)
+corrplot = np.take_along_axis(data['allcorrdims'], xsort, axis=0)
+trange = np.arange(0, 64.1, 0.25)
+trange2 = np.arange(-0.125, 64.0 + 0.125 + 0.01, 0.25)
+tplot = np.zeros(xplot.shape)
+tplot[:,:] = trange[np.newaxis, :]
+
+def recenter(z):
+    z2 = np.zeros(z.shape[0]+1)
+    z2[1:-1] = (z[1:] + z[:-1]) / 2.0
+    z2[0] = 2*z[0] - z[1]
+    z2[-1] = 2*z[-1] - z[-2]
+    return z2
+
+"""
+tplot2 = recenter(tplot)
+xplot2 = recenter(xplot.T).T
+
+triangles = np.zeros((len(np.ravel(corrplot))*2, 3))
+facecolors = np.zeros(len(np.ravel(corrplot))*2)
+
+facecolors[::2] = np.ravel(corrplot)
+facecolors[1::2] = np.ravel(corrplot)
+
+for i in range(len(np.ravel(corrplot))):
+    ind1 = i%corrplot.shape[1]
+    ind0 = i//corrplot.shape[1]
+    
+    triangles[2*i] = [ind1+ind0*(corrplot.shape[1]+1), (ind1+1)+ind0*(corrplot.shape[1]+1), ind1+(ind0+1)*(corrplot.shape[1]+1)]
+    triangles[2*i+1] = [(ind1+1)+ind0*(corrplot.shape[1]+1), (ind1+1)+(ind0+1)*(corrplot.shape[1]+1), ind1+(ind0+1)*(corrplot.shape[1]+1)]
+"""
+
+for i in range(len(trange)):
+    xplot2 = recenter(xplot[:,i])
+    tplot2 = np.array([trange2[i], trange2[i+1]])
+    
+    tplot3, xplot3 = np.meshgrid(tplot2, xplot2)
+    
+    ax2.pcolormesh(tplot3, xplot3, np.array([corrplot[:,i]]).T, vmin=1.0, vmax=2.0, shading='flat')
+
+#ax2.pcolormesh(tplot, xplot, corrplot, vmin=1.0, vmax=2.0, shading='gouraud')
+#ax2.scatter(np.ravel(tplot), np.ravel(data['allxavgs']), c=np.ravel(data['allcorrdims']), cmap='viridis', vmin=1.0, vmax=2.0, s=(72.0/100.0)**2)
+#ax2.tripcolor(np.ravel(tplot2), np.ravel(xplot2), triangles, facecolors=facecolors)
+
 
 ax3 = plt.subplot(313)
 #ax3.pcolormesh(np.gradient(qbars['qbar'], axis=1).T / (2*np.pi/nx) < -8, cmap='PiYG')
@@ -161,9 +206,15 @@ ax3.pcolormesh(cdata['lenallcontours'].T)
 
 # %%
 
-xsort = np.argsort(data['allxavgs'], axis=0)
-xorbit = np.average(np.take_along_axis(data['allxavgs'], xsort, axis=0), axis=1)
-chfraction = np.sum(np.take_along_axis(data['allcorrdims'], xsort, axis=0)>1.5, axis=1) / 521
+xsort = np.argsort(np.ravel(data['allxavgs']))
+xorbit = np.average(np.reshape(np.ravel(data['allxavgs'])[xsort], data['allxavgs'].shape), axis=1)
+chfraction = np.average(np.reshape(np.ravel(data['allcorrdims'])[xsort]>1.5, data['allxavgs'].shape), axis=1)
+
+kuofraction = np.average((np.gradient(qbars['qbar'], axis=1) / (2*np.pi/nx))+8 < 0, axis=0)
+
+#xsort = np.argsort(data['allxavgs'], axis=0)
+#xorbit = np.average(np.take_along_axis(data['allxavgs'], xsort, axis=0), axis=1)
+#chfraction = np.average(np.take_along_axis(data['allcorrdims'], xsort, axis=0)>1.5, axis=1)
 
 plt.figure()
 ax = plt.subplot(111)
@@ -172,3 +223,4 @@ ax.axhline(0)
 
 axt = ax.twinx()
 axt.plot(xorbit, chfraction, c='tab:orange')
+axt.plot(x, kuofraction, c='tab:green')
