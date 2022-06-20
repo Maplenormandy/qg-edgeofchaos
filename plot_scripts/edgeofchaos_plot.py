@@ -79,68 +79,105 @@ def poincarePlot(ax, pdata, colordata):
     #ax.set_title('$d_{cor}$')
     
     cax.text(0.5, 1.05, '$d_C$', transform=cax.transAxes, ha='center', va='bottom')
+
+# %% Compute etensors
     
+etensors = [None]*2
+
+for case in [1,2]:
+    inputdata = np.load('../poincare_input/case{}_poincare_config_fd_smooth_uphavg.npz'.format(case))
+    
+    nx = 2048
+    numeigs = inputdata['psiv'].shape[0]
+    
+    etensor = np.zeros((numeigs, numeigs))
+    
+    psiv = inputdata['psiv']
+    kys = inputdata['kys']
+    qv = np.zeros(inputdata['psiv'].shape)
+    dx = 2*np.pi/nx
+    cent_d2x = (np.diag(np.ones(nx-1), 1)+np.diag(np.ones(nx-1), -1) - 2*np.eye(nx) + np.diag(np.ones(1), -(nx-1))+np.diag(np.ones(1), (nx-1))) / dx**2
+    
+    for i in range(numeigs):
+        ky = kys[i]
+        lap = (cent_d2x - np.eye(nx)*(ky**2))
+        qv[i,:] = lap @ psiv[i,:]
+        
+    for i in range(numeigs):
+        for j in range(i,numeigs):
+            if kys[i] != kys[j]:
+                pass
+            else:
+                etensor[i,j] = -psiv[i,:] @ qv[j,:]
+                etensor[j,i] = -psiv[j,:] @ qv[i,:]
+                
+    etensors[case-1] = etensor
+
 # %% Setting up plot
 
 
-fig = plt.figure(figsize=(8.7/2.54, 0.7*8.7/2.54), dpi=300)
+fig = plt.figure(figsize=(17.8/2.54, 0.27*17.8/2.54), dpi=300)
 #fig = plt.figure(figsize=(17.8/2.54, 0.25*17.8/2.54), dpi=300)
-gs = fig.add_gridspec(2, 2, width_ratios=[2,2], height_ratios=[2,5])
+gs = fig.add_gridspec(1, 4)
+
+amps = np.arange(0.1, 1.61, 0.1)
+
+gsihist = gs[0].subgridspec(2, 1)
+gsiamp = gs[1].subgridspec(2, 1)
 
 for case in [1,2]:
     #cdata = np.load('case{}_snapcontours.npz'.format(case))
+    adata = np.load('../poincare_analysis/case{}_mixing_lengths_amps.npz'.format(case))
     mdata = np.load('../poincare_analysis/case{}_mixing_lengths.npz'.format(case))
-    qbars = np.load('../dns_input/case{}/qbars.npz'.format(case))
     
-    axm = fig.add_subplot(gs[0,case-1])
+    axh = fig.add_subplot(gsihist[case-1])
+    axa = fig.add_subplot(gsiamp[case-1])
     
-    # Compute things to plot
-    qbar = np.average(qbars['qbar'], axis=0)
-    dqbar = np.gradient(qbar) / np.gradient(x) + 8
+    ### Compute chaotic fractions for snapshots ###
+    chaoticfractions = np.average(mdata['allcorrdims']>1.5, axis=0)
+    ampfractions = np.average((adata['allcorrdims']>1.5), axis=0)
     
-    xsort = np.argsort(np.ravel(mdata['allxavgs']))
-    xorbit = np.average(np.reshape(np.ravel(mdata['allxavgs'])[xsort], mdata['allxavgs'].shape), axis=1)
-    chfraction = np.average(np.reshape(np.ravel(mdata['allcorrdims'])[xsort]>1.5, mdata['allxavgs'].shape), axis=1)
+    bins = np.linspace(0.0, 0.25, num=13)
     
-    kuofraction = np.average((np.gradient(qbars['qbar'], axis=1) / (2*np.pi/nx))+8 < 0, axis=0)
+    ### Compute average energy deviations ###
+    inputdata = np.load('../poincare_input/case{}_poincare_config_fd_smooth_uphavg.npz'.format(case))
+    timedata = np.load('../poincare_input/case{}_eigencomponent_timedata_uphavg.npz'.format(case))
+                
+    zamps = inputdata['amps']*np.exp(1j*inputdata['phases'])
     
-    # Plot of mixing
-    axt = axm.twinx()
+    avgenergy = np.real(np.conj(zamps) @ (etensors[case-1] @ zamps))
+    snapenergies = np.zeros(timedata['ampdevs'].shape[1])
     
-    axm.fill_between(xorbit, chfraction, color='tab:orange', fc=mpl.cm.tab20(0.175), lw=0)
-    axm.plot(xorbit, chfraction, c='tab:orange')
-    axt.plot(x, dqbar, c='tab:blue')
-    
-    axm.set_ylim([0.0, 1.0])
-    if (case==1):
-        axt.set_ylim([0.0, 40.0])
-    else:
-        axt.set_ylim([0.0, 30.0])
+    for i in range(timedata['ampdevs'].shape[1]):
+        zamps = inputdata['amps']*timedata['ampdevs'][:,i]*np.exp(1j*(inputdata['phases']+timedata['phasedevs'][:,i]))
+        snapenergies[i] = np.real(np.conj(zamps) @ (etensors[case-1] @ zamps))
         
+    ### Plot histogram ###
+    axh.hist(chaoticfractions, bins=bins)
     
+    ### Plot chaotic fraction vs. amplitude ###
+    axa.axvspan(np.min(np.sqrt(snapenergies/avgenergy)), np.max(np.sqrt(snapenergies/avgenergy)), fc=mpl.cm.tab20(0.175))
+    #axa.axvline(1.0, c='k', ls='--')
+    axa.plot(amps[:], ampfractions[:])
+
     
-    # Extra poincare plots
-    snapind = 249 if (case == 1) else 32
-    pdata = np.load('../extra_poincare_sections/case{}_section_ind{:03d}_uphavg.npz'.format(case,snapind))
-    
-    axp = fig.add_subplot(gs[1,case-1])
-    
-    poincarePlot(axp, pdata, mdata['allcorrdims'][:,snapind])
-    
-    if (case==1):
-        axm.set_title('Case 1')
-        axm.set_ylabel('$f_{chaotic}$')
-        axm.set_xlabel('$y$')
-        axp.set_xlabel('$x$')
-        axp.set_ylabel('$y$')
-    else:
-        axm.set_title('Case 2')
-        axt.set_ylabel(r"$\bar{q}'(y)$")
-        
+### Plot Poincare sections ###
+axp1 = fig.add_subplot(gs[2])
+pdata = np.load('../extra_poincare_sections/case{}_section_ind{:03d}_uphavg.npz'.format(2,0))
+mdata = np.load('../poincare_analysis/case{}_mixing_lengths.npz'.format(2))
+
+poincarePlot(axp1, pdata, mdata['allcorrdims'][:,0])
+
+axp2 = fig.add_subplot(gs[3])
+pdata = np.load('../extra_poincare_sections/case{}_section_ind{:03d}_switched_uphavg.npz'.format(2,0))
+mdata = np.load('../poincare_analysis/case{}_mixing_lengths_switched.npz'.format(2))
+
+poincarePlot(axp2, pdata, mdata['allcorrdims'][:,0])
+
 
 plt.tight_layout(h_pad=0.0, w_pad=0.0)
 plt.tight_layout(h_pad=0.0, w_pad=0.0)
 
 
-plt.savefig('edgeofchaos_plot.pdf', dpi=900)
-plt.savefig('edgeofchaos_plot.png', dpi=900)
+plt.savefig('edgeofchaos_plot.pdf', dpi=600)
+plt.savefig('edgeofchaos_plot.png', dpi=600)

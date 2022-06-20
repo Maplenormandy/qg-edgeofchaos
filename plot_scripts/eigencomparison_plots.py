@@ -85,43 +85,23 @@ for ky in range(1,nky+1):
         print("Solving")
         eigs2[ky-1] = eigsolver.solveEigenfunctions(ky=ky, norm='action')
 
-# %% Get rsquared for the eigenmodes
-
-def rsquareds(eigamps):
-    numofs = 64
-    rsqt = np.zeros((eigamps.shape[0], numofs, eigamps.shape[2]))
-    
-    for i in range(numofs):
-        fitofs = i+1
-    
-        x = eigamps[:,:-fitofs,:]
-        y = eigamps[:,fitofs:,:]
-    
-        amat = np.sum(y * np.conj(x), axis=1) / np.sum(np.abs(x)**2, axis=1)
-    
-        residuals = y - (x * amat[:,np.newaxis,:])
-        vartot = np.average(np.abs(y)**2, axis=1)
-        varresid = np.average(np.abs(residuals)**2, axis=1)
-    
-        rsqt[:,i,:] = 1 - (varresid/vartot)
-    
-    rsquaredall = np.min(rsqt, axis=1)
-    return rsquaredall
-
-rsquareds1 = rsquareds(eigamps1)
-rsquareds2 = rsquareds(eigamps2)
-
 
 # %%
 
 
-fig = plt.figure(figsize=(17.8/2.54, 0.5*11.4/2.54), dpi=300)
-gs = fig.add_gridspec(2, 4, width_ratios=[2,2,2,2])
+fig = plt.figure(figsize=(8.7/2.54, 0.9*8.7/2.54), dpi=300)
+
+#fig = plt.figure(figsize=(11.4/2.54, 0.45*11.4/2.54), dpi=300)
+#gs = fig.add_gridspec(2, 3, width_ratios=[2,2,2])
+
+gsouter = fig.add_gridspec(2,1, height_ratios=[2,1], hspace=0.3)
+gs = gsouter[0].subgridspec(2,2)
+
+gsq = gsouter[1].subgridspec(1,2)
 
 
 kys = [1, 3]
 eignums = [1, 1]
-
 
 
 for i in range(2):
@@ -164,7 +144,6 @@ for i in range(2):
         
         zf_amp = np.average(timetraces['arr_0'][:,0]*podsvals1[0])
         
-        rsquareds = np.ravel(rsquareds1)
         vphs = np.ravel(np.array([eigs[ky-1]['w'] for ky in range(1,len(eigs)+1)]))
     else:
         eigs = eigs2
@@ -182,7 +161,6 @@ for i in range(2):
         
         zf_amp = np.average(timetraces['arr_0'][:,0]*podsvals2[0])
         
-        rsquareds = np.ravel(rsquareds2)
         vphs = np.ravel(np.array([eigs[ky-1]['w'] for ky in range(1,len(eigs)+1)]))
 
 
@@ -218,12 +196,12 @@ for i in range(2):
              '$\\omega_{POD} \\approx ' + str(np.round(podfreq, 2)) + '$',
              '$\\omega_{0,k} = ' + str(-8.0 * ky / (1 + ky**2)) + '$']
     
-    # Eigenfunction radial plots
+    ### Eigenfunction radial plots ###
     ax[3].axis('off')
     ax[3].text(0.5, 0.5, '\n'.join(lines), ha='center', va='center', transform=ax[3].transAxes)
     
     
-    gs_inner = gs[i,2].subgridspec(2, 1, hspace=0.0)
+    gs_inner = gsq[i].subgridspec(2, 1, hspace=0.0)
     
     axi0 = fig.add_subplot(gs_inner[0])
     axi1 = fig.add_subplot(gs_inner[1])
@@ -252,6 +230,10 @@ for i in range(2):
     pod_e = np.sum(-pod_psi*pod_q)
     eig_e = np.sum(-eig_psi*eig_q)
     
+    
+    axi0.axhline(ls=':', lw=0.4, c='gray')
+    axi1.axhline(ls=':', lw=0.4, c='gray')
+    
     axi0.plot(x, pod_q, lw=0.8)
     axi0.plot(x, eig_q, lw=0.8, ls='--')
     axi0.xaxis.set_ticklabels([])
@@ -268,41 +250,36 @@ for i in range(2):
     axi1.text(0.03, 0.95, r'$\bar{q}$', transform=axi1.transAxes, ha='left', va='top')
     #axi1.set_yscale('log')
     
-    # Plot of rsquareds versus vph
-    axr = fig.add_subplot(gs[i,3])
-    coherent = np.logical_and(vphs < 0.0, rsquareds > 0.4)
-    axr.scatter(vphs[coherent], rsquareds[coherent], s=4.0, marker='^', c='tab:green')
-    axr.scatter(vphs[np.logical_not(coherent)], rsquareds[np.logical_not(coherent)], s=1.0, marker='.', c='tab:red')
-    axr.set_ylabel(r'$r^2_{\mathrm{min}}$')
+    
+    axi1.set_xlabel('$y$')
     
     if i == 0:
         #ax[0].set_title('(a)', loc='left')
         #ax[2].set_title('(b)', loc='left')
         #axi0.set_title('(c)', loc='left')
-        axi1.xaxis.set_ticklabels([])
+        #axi1.xaxis.set_ticklabels([])
         
-        axi0.set_title('PV Comparison')
-        axr.set_title('Coherent Eigenmodes')
+        axi0.text(0.5, 1.15, 'Case 1', transform=axi0.transAxes, ha='center', va='bottom')
         
         ax[0].text(0.0, 1.1, '(a)', transform=ax[0].transAxes, ha='left', va='bottom')
-        ax[2].text(0.0, 1.1, '(b)', transform=ax[2].transAxes, ha='left', va='bottom')
-        axi0.text(0.0, 1.1, '(c)', transform=axi0.transAxes, ha='left', va='bottom')
-        axr.text(0.0, 1.1, '(d)', transform=axr.transAxes, ha='left', va='bottom')
+        #ax[2].text(0.0, 1.1, '(b)', transform=ax[2].transAxes, ha='left', va='bottom')
+        axi0.text(0.0, 1.15, '(b)', transform=axi0.transAxes, ha='left', va='bottom')
+        #axr.text(0.0, 1.07, '(d)', transform=axr.transAxes, ha='left', va='bottom')
         
         ax[0].text(0.05,0.95, r'$\psi(x,y)$', transform=ax[0].transAxes, ha='left', va='top')
         ax[0].set_ylabel('Case 1, modes 1+2')
     elif i == 1:
-        axi1.set_xlabel('$y$')
         
+        axi0.text(0.5, 1.15, 'Case 2', transform=axi0.transAxes, ha='center', va='bottom')
         ax[0].set_ylabel('Case 2, modes 5+6')
-        axr.set_xlabel(r'$u_{ph}$')
 
 
-plt.tight_layout(w_pad=0.4, h_pad=0.4)
-plt.tight_layout(w_pad=0.4, h_pad=0.4)
+#plt.tight_layout(w_pad=0.0, h_pad=0.4)
+#plt.tight_layout(w_pad=0.0, h_pad=0.4)
+plt.margins(0, tight=True)
 
-plt.savefig('eigencomparison_plots.pdf', dpi=1200)
-plt.savefig('eigencomparison_plots.png', dpi=1200)
+plt.savefig('eigencomparison_plots.pdf', dpi=300)
+plt.savefig('eigencomparison_plots.png', dpi=300)
 
 """
 ax0 = fig.add_subplot(gs[i, 0])
@@ -320,5 +297,3 @@ eig = eignums[i]
 
 
 """
-    
-    

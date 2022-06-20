@@ -466,8 +466,8 @@ plt.yscale('log')
 
 # %% Eigenfunction plots
 
-eig = 5
-ky = 3
+eig = 4
+ky = 4
 fig = plt.figure()
 ax = plt.subplot(211)
 ax.plot(np.real(eigs[ky-1]['vpsi'][:,eig]))

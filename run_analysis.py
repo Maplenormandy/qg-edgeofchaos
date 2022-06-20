@@ -22,7 +22,7 @@ import scipy.optimize
 
 suffix = '_uphavg'
 #suffix = ''
-case = 1
+case = 2
 pm = PoincareMapper('poincare_input/case{}_poincare_config_fd_smooth{}.npz'.format(case, suffix))
 numeigs = len(pm.data['kys'])
 
@@ -37,6 +37,7 @@ pm.generateBreakingSection(np.ones(numeigs)*1.0, np.zeros(numeigs), pm.qmin, 8, 
 pm.generateBreakingSection(np.ones(numeigs)*1.2, np.zeros(numeigs), pm.qmin, 8, 'sections/case{}_breaking_amp120.npz'.format(case), resampling=True)
 """
 
+"""
 timeind = 49
 ampmults = timedata['ampdevs'][:,timeind]
 phasedevs = timedata['phasedevs'][:,timeind]
@@ -49,6 +50,7 @@ qmax = qbarf(uymaxx.x) + 8*(uymaxx.x)
 
 pm.generateBreakingSection(ampmults, phasedevs, pm.qmin, 8, 'sections/case{}_breaking_qmin.npz'.format(case), resampling=True)
 pm.generateBreakingSection(ampmults, phasedevs, qmax, 8, 'sections/case{}_breaking_qmax.npz'.format(case), resampling=True)
+"""
 
 #pm.generateBreakingSection(np.sqrt(pm.data['rsquared'])*0.4, np.zeros(numeigs), pm.qmin, 8, 'sections/case{}_breaking_amp040.npz'.format(case), resampling=True)
 #pm.generateBreakingSection(np.sqrt(pm.data['rsquared'])*1.0, np.zeros(numeigs), pm.qmin, 8, 'sections/case{}_breaking_amp100.npz'.format(case), resampling=True)
@@ -57,8 +59,8 @@ pm.generateBreakingSection(ampmults, phasedevs, qmax, 8, 'sections/case{}_breaki
 
 # %% Lyapunov exponents versus number of modes kept
 
-"""
-numwaves = list(range(2, numeigs))
+
+numwaves = [numeigs]
 lyaps = np.zeros(len(numwaves))
 lyapstds = np.zeros(len(numwaves))
     
@@ -89,7 +91,7 @@ for ind in range(len(numwaves)):
     print('-----')
         
     np.savez('lyapunovs/case{}_lyaps_numwaves{}.npz'.format(case, suffix), numwaves=numwaves, lyaps=lyaps, lyapstds=lyapstds)
-"""
+
 
 # %% Generate amplitude lyapunov exponents
 

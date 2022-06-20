@@ -67,7 +67,7 @@ def poincarePlot(ax, pdata, colordata):
     ax.set_aspect('equal', adjustable='datalim')
 
     #ax.set_xticks([])
-    sc = ax.scatter(yclip[nparticles:,:], yclip[:nparticles,:], s=(72.0/900.0)**2, marker='o', linewidths=0, c=colors[:,:], rasterized=True, cmap='viridis', vmin=1.0, vmax=2.0)
+    sc = ax.scatter(yclip[nparticles:,:], yclip[:nparticles,:], s=(72.0/450.0)**2, marker='o', linewidths=0, c=colors[:,:], rasterized=True, cmap='viridis', vmin=1.0, vmax=2.0)
     
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -82,64 +82,197 @@ def poincarePlot(ax, pdata, colordata):
     cax.text(0.5, 1.05, '$d_C$', transform=cax.transAxes, ha='center', va='bottom')
     
 
-# %% Plot figure
-
-fig = plt.figure(figsize=(17.8/2.54, 0.25*17.8/2.54), dpi=300)
-gs = fig.add_gridspec(1, 4, width_ratios=[2,2,2,2])
-
-
-for case in [1,2]:
-    cdata = np.load('case{}_snapcontours.npz'.format(case))
+def mixPlot(axm, case):
     mdata = np.load('../poincare_analysis/case{}_mixing_lengths.npz'.format(case))
     qbars = np.load('../dns_input/case{}/qbars.npz'.format(case))
-
-    ### Load and plot PV data ###
-    snapind = 51 if (case == 1) else 192
-    snapfilenum = (snapind//16+2) if (case == 1) else (snapind//10+1)
-    simdata = h5py.File('../dns_input/case{}/snapshots_s{}.h5'.format(case, snapfilenum), 'r')
-    qindex = (snapind%16) if (case == 1) else (snapind%10)
     
-    q = simdata['tasks/q'][qindex,:,:]
+    # Compute things to plot
+    qbar = np.average(qbars['qbar'], axis=0)
+    dqbar = np.gradient(qbar) / np.gradient(x) + 8
     
-    lenq = circularInterpolant(cdata['levels'], np.average(cdata['lenmaxcontour'], axis=0), 2*8*np.pi, 500)
+    xsort = np.argsort(np.ravel(mdata['allxavgs']))
+    xorbit = np.average(np.reshape(np.ravel(mdata['allxavgs'])[xsort], mdata['allxavgs'].shape), axis=1)
+    chfraction = np.average(np.reshape(np.ravel(mdata['allcorrdims'])[xsort]>1.5, mdata['allxavgs'].shape), axis=1)
     
-    axq = fig.add_subplot(gs[2*case-1])
-    #axq.set_xticks([])
-    #axq.set_yticks([])
+    kuofraction = np.average((np.gradient(qbars['qbar'], axis=1) / (2*np.pi/nx))+8 < 0, axis=0)
     
-
-    #axq.set_title('$\ell(q(x,y,t))$')
+    # Plot of mixing
+    axt = axm.twinx()
     
+    axm.fill_between(xorbit, chfraction, color='tab:orange', fc=mpl.cm.tab20(0.175), lw=0)
+    axm.plot(xorbit, chfraction, c='tab:orange')
     
-    ### Plot the poincare plots max amplitude ###
-    pdata = np.load('../extra_poincare_sections/case{}_section_ind{:03d}_uphavg.npz'.format(case,snapind))
-    axp1 = fig.add_subplot(gs[2*case-2])
+    axm.set_ylim([0.0, 1.0])
     
-    poincarePlot(axp1, pdata, mdata['allcorrdims'][:,snapind])
+    axt.axhline(8, c='k', ls='--')
+    axt.plot(x, dqbar, c='tab:blue')
     
-    if (case == 1):
-        #axp1.text(0.0, 1.05, 'Case 1', transform=axp1.transAxes, ha='left', va='bottom')
-        axp1.set_title('Case 1', loc='left')
-        axp1.set_xlabel('$x$')
-        axp1.set_ylabel('$y$')
+    axm.spines['left'].set_color('tab:blue')
+    axt.spines['left'].set_color('tab:blue')
+    
+    axm.spines['right'].set_color('tab:orange')
+    axt.spines['right'].set_color('tab:orange')
+    
+    axt.yaxis.label.set_color('tab:blue')
+    axt.tick_params(axis='y', colors='tab:blue')
+    
+    axm.yaxis.label.set_color('tab:orange')
+    axm.tick_params(axis='y', colors='tab:orange')
+    
+    if (case==1):
+        axt.set_ylim([0.0, 40.0])
+        axm.text(0.0, 1.02, r"$\bar{q}'(y)+\beta$", transform=axm.transAxes, ha='left', va='bottom', c='tab:blue')
+        axm.text(1.0, 1.02, r'$f_{\mathrm{chaotic}}$', transform=axm.transAxes, ha='right', va='bottom', c='tab:orange')
     else:
-        #axp1.text(0.0, 1.05, 'Case 2', transform=axp1.transAxes, ha='left', va='bottom')
-        axp1.set_title('Case 2', loc='left')
-        axp1.set_yticklabels([])
-        
-    im = axq.imshow(np.fliplr(lenq(q+8*x[:,np.newaxis])), origin='lower', cmap='viridis', extent=(-np.pi, np.pi, -np.pi, np.pi))
-    divider = make_axes_locatable(axq)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
+        axt.set_ylim([0.0, 30.0])
     
-    plt.colorbar(im, cax=cax)
+    axm.yaxis.tick_right()
+    axt.yaxis.tick_left()
     
-    cax.text(0.5, 1.05, '$\ell_q$', transform=cax.transAxes, ha='center', va='bottom')
-    axq.set_yticklabels([])
+    axm.set_xlim([-np.pi, np.pi])
     
+    """
+    ### Plotting for qtilde ###
+    inputdata = np.load('../poincare_input/case{}_poincare_config_fd_smooth_uphavg.npz'.format(case))
     
-    
-plt.tight_layout(h_pad=0.0, w_pad=0.0)
-plt.tight_layout(h_pad=0.0, w_pad=0.0)
 
-plt.savefig('mixing_plot.pdf', dpi=900)
-plt.savefig('mixing_plot.png', dpi=900)
+    # Compute q for each eigenfunction    
+    numeigs = inputdata['psiv'].shape[0]
+    psiv = inputdata['psiv']
+    kys = inputdata['kys']
+    qv = np.zeros(inputdata['psiv'].shape)
+    dx = 2*np.pi/nx
+    cent_d2x = (np.diag(np.ones(nx-1), 1)+np.diag(np.ones(nx-1), -1) - 2*np.eye(nx) + np.diag(np.ones(1), -(nx-1))+np.diag(np.ones(1), (nx-1))) / dx**2
+
+    for i in range(numeigs):
+        ky = kys[i]
+        lap = (cent_d2x - np.eye(nx)*(ky**2))
+        qv[i,:] = lap @ psiv[i,:]
+    
+    # Compute qtilde
+    camp = inputdata['amps'] * np.exp(1j*inputdata['phases'])
+    qtildeplot = np.sqrt(np.sum(np.abs(camp[:, np.newaxis] * qv)**2, axis=0)/2.0)
+    
+    # Plot qtilde
+    axq = axm.twinx()
+    
+    axq.plot(x, qtildeplot, ls='--', c='tab:green')
+    axq.spines.right.set_position(("axes", 1.1))
+    axq.yaxis.label.set_color('tab:green')
+    axq.tick_params(axis='y', colors='tab:green')
+
+    axq.spines['left'].set_color('tab:blue')
+    axq.spines['right'].set_color('tab:green')
+    """
+    
+
+# %% Plot figure
+
+fig = plt.figure(figsize=(17.8/2.54, 0.32*17.8/2.54), dpi=300)
+gs = fig.add_gridspec(1, 3, width_ratios=[2,2,2])
+
+
+case = 1
+
+cdata = np.load('case{}_snapcontours.npz'.format(case))
+mdata = np.load('../poincare_analysis/case{}_mixing_lengths.npz'.format(case))
+qbars = np.load('../dns_input/case{}/qbars.npz'.format(case))
+
+### Load PV data ###
+#snapind = 51 if (case == 1) else 192
+snapind = 0
+snapfilenum = (snapind//16+2) if (case == 1) else (snapind//10+1)
+simdata = h5py.File('../dns_input/case{}/snapshots_s{}.h5'.format(case, snapfilenum), 'r')
+qindex = (snapind%16) if (case == 1) else (snapind%10)
+
+q = simdata['tasks/q'][qindex,:,:]
+
+lenq = circularInterpolant(cdata['levels'], np.average(cdata['lenmaxcontour'], axis=0), 2*8*np.pi, 500)
+#lenq = circularInterpolant(cdata['levels'], cdata['lenmaxcontour'][snapind,:], 2*8*np.pi, 500)
+
+axq = fig.add_subplot(gs[1])
+
+
+### Plot the poincare plots max amplitude ###
+pdata = np.load('../extra_poincare_sections/case{}_section_ind{:03d}_uphavg.npz'.format(case,snapind))
+axp1 = fig.add_subplot(gs[0])
+
+poincarePlot(axp1, pdata, mdata['allcorrdims'][:,snapind])
+
+
+#axp1.set_title('Case 1 Poincaré Section')
+axp1.set_xlabel('$x$')
+axp1.set_ylabel('$y$')
+axp1.text(0.0, 1.05, '(a)', transform=axp1.transAxes, ha='left', va='bottom')
+axp1.set_title('Poincaré Section')
+
+### Plot the DNS snapshot ###
+
+im = axq.imshow(np.fliplr(lenq(q+8*x[:,np.newaxis])), origin='lower', cmap='viridis', extent=(-np.pi, np.pi, -np.pi, np.pi))
+divider = make_axes_locatable(axq)
+cax = divider.append_axes("right", size="5%", pad=0.05)
+
+plt.colorbar(im, cax=cax)
+
+cax.text(0.5, 1.03, '$\ell_q$', transform=cax.transAxes, ha='center', va='bottom')
+#axq.set_yticklabels([])
+
+axq.set_title('DNS Snapshot')
+axq.text(0.0, 1.05, '(b)', transform=axq.transAxes, ha='left', va='bottom')
+
+
+axq.set_xlabel('$x$')
+axq.set_ylabel('$y$')
+
+### Plot the boundaries of the chaotic region ###
+pcplot = [132, 186]
+#pcplot = [141, 172]
+yclip = pdata['yclip']
+
+for ind in pcplot:
+    nparticles = yclip.shape[0]//2
+    xind = np.argsort(yclip[nparticles+ind,:])
+    xplot = (yclip[nparticles+ind,:])[xind]
+    yplot = (yclip[ind,:])[xind]
+    axp1.plot(xplot[::4], yplot[::4], c='tab:red', ls='--', lw=0.3)
+    axq.plot(xplot[::4], yplot[::4], c='tab:red', ls='--', lw=0.3)
+    pass
+
+
+
+### Plot the PV gradient comparison ###
+gsinner = gs[2].subgridspec(2,1)
+
+axm1 = fig.add_subplot(gsinner[0])
+mixPlot(axm1, 1)
+axm2 = fig.add_subplot(gsinner[1])
+mixPlot(axm2, 2)
+
+axm1.set_xticklabels([])
+axm2.set_xlabel('$y$')
+
+#axm1.set_title('Chaotic Fraction vs. PV Gradient')
+
+axm1.text(-np.pi+0.1, 1.0-0.05, 'Case 1', ha='left', va='top')
+axm2.text(-np.pi+0.1, 1.0-0.05, 'Case 2', ha='left', va='top')
+
+axm1.text(0.0, 1.2, '(c)', transform=axm1.transAxes, ha='left', va='bottom')
+
+
+"""
+### Plot the weaker Poincare section ###
+
+snapind2 = 249 if (case == 1) else 32
+pdata = np.load('../extra_poincare_sections/case{}_section_ind{:03d}_uphavg.npz'.format(case,snapind2))
+axp2 = fig.add_subplot(gs[2])
+
+poincarePlot(axp2, pdata, mdata['allcorrdims'][:,snapind2])
+axp2.text(0.0, 1.1, '(c)', transform=axp2.transAxes, ha='left', va='bottom')
+"""
+
+plt.tight_layout(h_pad=0.0, w_pad=1.5)
+plt.tight_layout(h_pad=0.0, w_pad=1.5)
+plt.margins(0, tight=True)
+
+plt.savefig('mixing_plot.pdf', dpi=300)
+plt.savefig('mixing_plot.png', dpi=300)
