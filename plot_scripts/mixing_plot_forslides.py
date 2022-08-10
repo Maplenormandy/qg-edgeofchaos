@@ -168,101 +168,49 @@ def mixPlot(axm, case):
 
 # %% Plot figure
 
-fig = plt.figure(figsize=(17.8/2.54, 0.32*17.8/2.54), dpi=300)
-gs = fig.add_gridspec(1, 3, width_ratios=[2,2,2])
+#fig = plt.figure(figsize=(17.8/2.54, 0.32*17.8/2.54), dpi=300)
+#gs = fig.add_gridspec(1, 3, width_ratios=[2,2,2])
 
 
-#fig = plt.figure(figsize=(17.8/2.54*(2.0/3.0), 0.32*17.8/2.54), dpi=300)
-#gs = fig.add_gridspec(1, 2, width_ratios=[2,2])
+fig = plt.figure(figsize=(17.8/2.54*(2.0/3.0), 0.32*17.8/2.54), dpi=300)
+gs = fig.add_gridspec(1, 2, width_ratios=[2,2])
 
-case = 1
+#case = 1
 
-cdata = np.load('case{}_snapcontours.npz'.format(case))
-mdata = np.load('../poincare_analysis/case{}_mixing_lengths.npz'.format(case))
-qbars = np.load('../dns_input/case{}/qbars.npz'.format(case))
-
-### Load PV data ###
-#snapind = 51 if (case == 1) else 192
-snapind = 0 if (case == 1) else 192
-#snapind = 0
-snapfilenum = (snapind//16+2) if (case == 1) else (snapind//10+1)
-simdata = h5py.File('../dns_input/case{}/snapshots_s{}.h5'.format(case, snapfilenum), 'r')
-qindex = (snapind%16) if (case == 1) else (snapind%10)
-
-q = simdata['tasks/q'][qindex,:,:]
-
-lenq = circularInterpolant(cdata['levels'], np.average(cdata['lenmaxcontour'], axis=0), 2*8*np.pi, 500)
-
-
-### Plot the poincare plots max amplitude ###
-pdata = np.load('../extra_poincare_sections/case{}_section_ind{:03d}_uphavg.npz'.format(case,snapind))
-axp1 = fig.add_subplot(gs[0])
-
-poincarePlot(axp1, pdata, mdata['allcorrdims'][:,snapind])
-
-
-axp1.set_xlabel('$x$')
-axp1.set_ylabel('$y$')
-#axp1.text(0.0, 1.05, '(a)', transform=axp1.transAxes, ha='left', va='bottom')
-axp1.set_title('Poincaré Section')
-
-
-
-### Plot the DNS snapshot ###
-axq = fig.add_subplot(gs[1])
-im = axq.imshow(np.fliplr(lenq(q+8*x[:,np.newaxis])), origin='lower', cmap='viridis', extent=(-np.pi, np.pi, -np.pi, np.pi))
-divider = make_axes_locatable(axq)
-cax = divider.append_axes("right", size="5%", pad=0.05)
-
-plt.colorbar(im, cax=cax)
-
-cax.text(0.5, 1.03, '$\ell_q$', transform=cax.transAxes, ha='center', va='bottom')
-#axq.set_yticklabels([])
-
-axq.set_title('DNS Snapshot')
-#axq.text(0.0, 1.05, '(b)', transform=axq.transAxes, ha='left', va='bottom')
-
-axq.set_xlabel('$x$')
-axq.set_ylabel('$y$')
-
-
-### Plot the boundaries of the chaotic region ###
-if case == 1:
-    pcplot = [132, 186]
-else:
-    pcplot = [61, 80, 143, 166] # snapind = 192
-    #pcplot = [60, 81, 146, 166]
-#pcplot = [141, 172]
-yclip = pdata['yclip']
-
-for ind in pcplot:
-    nparticles = yclip.shape[0]//2
-    xind = np.argsort(yclip[nparticles+ind,:])
-    xplot = (yclip[nparticles+ind,:])[xind]
-    yplot = (yclip[ind,:])[xind]
-    axp1.plot(xplot[::4], yplot[::4], c='tab:orange', ls='--', lw=0.9)
-    axq.plot(xplot[::4], yplot[::4], c='tab:orange', ls='--', lw=0.9)
-    pass
+for case in [1,2]:
+    cdata = np.load('case{}_snapcontours.npz'.format(case))
+    mdata = np.load('../poincare_analysis/case{}_mixing_lengths.npz'.format(case))
+    qbars = np.load('../dns_input/case{}/qbars.npz'.format(case))
+    
+    ### Load PV data ###
+    #snapind = 51 if (case == 1) else 192
+    snapind = 0 if (case == 1) else 192
+    #snapind = 192
+    snapfilenum = (snapind//16+2) if (case == 1) else (snapind//10+1)
+    simdata = h5py.File('../dns_input/case{}/snapshots_s{}.h5'.format(case, snapfilenum), 'r')
+    qindex = (snapind%16) if (case == 1) else (snapind%10)
+    
+    q = simdata['tasks/q'][qindex,:,:]
+    
+    lenq = circularInterpolant(cdata['levels'], np.average(cdata['lenmaxcontour'], axis=0), 2*8*np.pi, 500)
+    
+    
+    ### Plot the poincare plots max amplitude ###
+    pdata = np.load('../extra_poincare_sections/case{}_section_ind{:03d}_uphavg.npz'.format(case,snapind))
+    axp1 = fig.add_subplot(gs[case-1])
+    
+    poincarePlot(axp1, pdata, mdata['allcorrdims'][:,snapind])
+    
+    
+    axp1.set_xlabel('$x$')
+    axp1.set_ylabel('$y$')
+    #axp1.text(0.0, 1.05, '(a)', transform=axp1.transAxes, ha='left', va='bottom')
+    axp1.set_title('Case {}'.format(case))
 
 
 
 
-### Plot the PV gradient comparison ###
-gsinner = gs[2].subgridspec(2,1)
-#gsinner = gs[1].subgridspec(2,1)
 
-axm1 = fig.add_subplot(gsinner[0])
-mixPlot(axm1, 1)
-axm2 = fig.add_subplot(gsinner[1])
-mixPlot(axm2, 2)
-
-axm1.set_xticklabels([])
-axm2.set_xlabel('$y$')
-
-axm1.text(-np.pi+0.1, 1.0-0.05, 'Case 1', ha='left', va='top')
-axm2.text(-np.pi+0.1, 1.0-0.05, 'Case 2', ha='left', va='top')
-
-#axm1.text(0.0, 1.2, '(c)', transform=axm1.transAxes, ha='left', va='bottom')
 
 
 

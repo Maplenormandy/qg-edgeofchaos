@@ -37,8 +37,7 @@ pm.generateBreakingSection(np.ones(numeigs)*1.0, np.zeros(numeigs), pm.qmin, 8, 
 pm.generateBreakingSection(np.ones(numeigs)*1.2, np.zeros(numeigs), pm.qmin, 8, 'sections/case{}_breaking_amp120.npz'.format(case), resampling=True)
 """
 
-"""
-timeind = 49
+timeind = 0 if (case==1) else 192
 ampmults = timedata['ampdevs'][:,timeind]
 phasedevs = timedata['phasedevs'][:,timeind]
 
@@ -48,9 +47,13 @@ qbarf = pm.qbarf
 uymaxx = scipy.optimize.minimize_scalar(lambda x: -uyf(x), bounds=(-np.pi, np.pi), method='bounded')
 qmax = qbarf(uymaxx.x) + 8*(uymaxx.x)
 
-pm.generateBreakingSection(ampmults, phasedevs, pm.qmin, 8, 'sections/case{}_breaking_qmin.npz'.format(case), resampling=True)
-pm.generateBreakingSection(ampmults, phasedevs, qmax, 8, 'sections/case{}_breaking_qmax.npz'.format(case), resampling=True)
-"""
+solmin, yclipmin = pm.generateBreakingSection(ampmults, phasedevs, pm.qmin, 16, 'sections/case{}_breaking_qmin_.npz'.format(case), resampling=True)
+lyap, lyapstd = pm.findLyapunov(solmin, yclipmin, resampling=True)
+print(lyap)
+
+solmax, yclipmax = pm.generateBreakingSection(ampmults, phasedevs, qmax, 16, 'sections/case{}_breaking_qmax_.npz'.format(case), resampling=True)
+lyap, lyapstd = pm.findLyapunov(solmax, yclipmax, resampling=True)
+print(lyap)
 
 #pm.generateBreakingSection(np.sqrt(pm.data['rsquared'])*0.4, np.zeros(numeigs), pm.qmin, 8, 'sections/case{}_breaking_amp040.npz'.format(case), resampling=True)
 #pm.generateBreakingSection(np.sqrt(pm.data['rsquared'])*1.0, np.zeros(numeigs), pm.qmin, 8, 'sections/case{}_breaking_amp100.npz'.format(case), resampling=True)
@@ -59,7 +62,7 @@ pm.generateBreakingSection(ampmults, phasedevs, qmax, 8, 'sections/case{}_breaki
 
 # %% Lyapunov exponents versus number of modes kept
 
-
+"""
 numwaves = [numeigs]
 lyaps = np.zeros(len(numwaves))
 lyapstds = np.zeros(len(numwaves))
@@ -91,7 +94,7 @@ for ind in range(len(numwaves)):
     print('-----')
         
     np.savez('lyapunovs/case{}_lyaps_numwaves{}.npz'.format(case, suffix), numwaves=numwaves, lyaps=lyaps, lyapstds=lyapstds)
-
+"""
 
 # %% Generate amplitude lyapunov exponents
 

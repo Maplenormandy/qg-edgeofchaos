@@ -413,7 +413,7 @@ class PoincareMapper:
             arclength_lastbit = np.sqrt((np.mod(sol.y[nparticles-1,:]-sol.y[0,:]+np.pi,2*np.pi)-np.pi)**2 + (np.mod(sol.y[-1,:]-sol.y[nparticles,:]+np.pi,2*np.pi)-np.pi)**2)
             arclength = np.sum(np.sqrt(np.diff(sol.y[:nparticles,:], axis=0)**2 + np.diff(sol.y[nparticles:,:], axis=0)**2), axis=0) + arclength_lastbit
 
-        lam = scipy.stats.mstats.linregress(range(len(arclength)), arclength)
+        lam = scipy.stats.mstats.linregress(range(len(arclength)), np.log(arclength))
 
         print('initial length', arclength[0])
         print('lyap:',lam.slope,lam.stderr)
