@@ -244,7 +244,7 @@ plt.tight_layout(pad=0)
 #plt.margins(0, tight=True)
 
 plt.savefig('plot_eigencomparison.pdf', dpi=300)
-#plt.savefig('eigencomparison_plots.png', dpi=300)
+plt.savefig('plot_eigencomparison.png', dpi=600)
 
 """
 ax0 = fig.add_subplot(gs[i, 0])

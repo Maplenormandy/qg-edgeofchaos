@@ -250,5 +250,5 @@ for case in [1,2]:
 plt.tight_layout(pad=0, w_pad=2.0)
 plt.tight_layout(pad=0, w_pad=2.0)
 
-plt.savefig('plot_mixing.pdf', dpi=300)
-#plt.savefig('mixing_plot.png', dpi=300)
+plt.savefig('./final/plot_mixing.pdf', dpi=300)
+plt.savefig('./final/plot_mixing.png', dpi=300)

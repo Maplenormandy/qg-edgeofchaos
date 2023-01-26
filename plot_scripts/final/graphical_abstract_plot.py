@@ -163,5 +163,5 @@ axp1.spines['left'].set_visible(False)
 
 plt.tight_layout(pad=0)
 
-plt.savefig('graphical_abstract.pdf', dpi=300)
+plt.savefig('graphical_abstract.png', dpi=300)
 #plt.savefig('mixing_plot.png', dpi=300)

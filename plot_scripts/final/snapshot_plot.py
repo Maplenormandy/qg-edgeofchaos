@@ -53,6 +53,7 @@ invlap[k2>0] = -1.0 / k2[k2>0]
 
 # %%
 
+
 fig = plt.figure(figsize=(13.0/2.54, 13.0/2.54*0.34), dpi=300)
 gs = fig.add_gridspec(1, 4, width_ratios=[4,1,4,1])
 
@@ -123,10 +124,13 @@ for case in [1, 2]:
     axq = ax[2*case-2]
     caxq = axq.imshow(qplot_color, origin='lower', extent=(-np.pi, np.pi, -np.pi, np.pi))
     
-    qnorm = mpl.colors.Normalize(vmin=(-8*np.pi-8*offset)/3.0, vmax=(8*np.pi-8*offset)/3.0)
-    cbar = fig.colorbar(mpl.cm.ScalarMappable(norm=qnorm, cmap='twilight'),
-                 ax=axq, orientation='vertical', extend='both')
-    cbar.ax.text(0.5, -0.2, r'$q+\beta y$', ha='center', va='bottom', transform=cbar.ax.transAxes)
+    qrange_color = mpl.cm.twilight(np.mod(numzones*np.linspace(np.min(qplot), np.max(qplot), num=256)/(2*8*np.pi), 1.0))
+    cmap2 = mpl.colors.LinearSegmentedColormap.from_list('twilight2', qrange_color)
+    qnorm = mpl.colors.Normalize(vmin=np.min(qplot)-8.0*offset, vmax=np.max(qplot)-8.0*offset)
+    
+    cbar = fig.colorbar(mpl.cm.ScalarMappable(norm=qnorm, cmap=cmap2),
+                 ax=axq, orientation='vertical')
+    cbar.ax.text(0.5, -0.1, r'$q+\beta y$', ha='center', va='bottom', transform=cbar.ax.transAxes)
     
     
     #ax[2,case*2-1].axis('off')
@@ -149,5 +153,6 @@ for case in [1, 2]:
 plt.tight_layout(pad=0, rect=(0.0,0.0, 1.0,0.92))
 plt.tight_layout(pad=0, rect=(0.0,0.0, 1.0,0.92))
 
-#plt.savefig('snapshot_plot.pdf', dpi=300)
-#plt.savefig('snapshot_plot.png', dpi=300)
+
+plt.savefig('plot_snapshot.pdf', dpi=300)
+plt.savefig('plot_snapshot.png', dpi=600)

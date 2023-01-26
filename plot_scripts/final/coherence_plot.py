@@ -261,7 +261,7 @@ plt.tight_layout(pad=0, w_pad=1.2, h_pad=0.4)
 #plt.margins(0, tight=True)
 
 plt.savefig('./final/plot_coherence.pdf', dpi=300)
-#plt.savefig('./final/coherence_plot.png', dpi=300)
+plt.savefig('./final/plot_coherence.png', dpi=600)
 
 """
 ax0 = fig.add_subplot(gs[i, 0])
