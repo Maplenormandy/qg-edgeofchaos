@@ -1,5 +1,5 @@
 # qg-edgeofchaos
-Analysis scripts for QG equations
+Analysis scripts for QG equations. Check out the published paper at [https://doi.org/10.1017/jfm.2023.90](https://doi.org/10.1017/jfm.2023.90)
 
 ## FIle/Folder Structure
 
